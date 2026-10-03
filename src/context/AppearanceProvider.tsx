@@ -6,6 +6,8 @@ import type { AppearanceContextValue, AppearanceResult } from './appearance-cont
 import {
   BUILTIN_BACKGROUNDS,
   DEFAULT_BACKGROUND_ID,
+  DEFAULT_DIM_DARK,
+  DEFAULT_DIM_LIGHT,
   DEFAULT_TONE,
   MAX_CUSTOM_BACKGROUND_BYTES,
   MAX_DIM,
@@ -111,19 +113,23 @@ export function AppearanceProvider({ children }: { children: ReactNode }) {
     }
   }, [activeBackground, needsAnalysis])
 
+  const activeDim = theme === 'light'
+    ? (prefs.dimLight ?? DEFAULT_DIM_LIGHT)
+    : (prefs.dimDark ?? DEFAULT_DIM_DARK)
+
   // Aplicar tema, acento y atenuación al documento.
   useLayoutEffect(() => {
     const root = document.documentElement
     root.dataset.theme = theme
     root.style.setProperty('--accent-h', String(activeTone.h))
     root.style.setProperty('--accent-c', String(activeTone.c))
-    root.style.setProperty('--bg-dim', String(prefs.dim))
+    root.style.setProperty('--bg-dim', String(activeDim))
     root.style.removeProperty('--light-color')
     document.querySelector('meta[name="color-scheme"]')?.setAttribute('content', theme)
     document
       .querySelector('meta[name="theme-color"]')
       ?.setAttribute('content', theme === 'dark' ? '#0b0d14' : '#eef1f7')
-  }, [theme, activeTone.h, activeTone.c, prefs.dim])
+  }, [theme, activeTone.h, activeTone.c, activeDim])
 
   // Persistir preferencias (incluido el último acento para el script anti-parpadeo).
   useEffect(() => {
@@ -133,7 +139,18 @@ export function AppearanceProvider({ children }: { children: ReactNode }) {
   const toggleTheme = useCallback(() => {
     const next: ThemeMode = theme === 'dark' ? 'light' : 'dark'
     const apply = () => {
-      flushSync(() => setPrefs((current) => ({ ...current, theme: next })))
+      flushSync(() => {
+        setPrefs((current) => {
+          const nextDim = next === 'light'
+            ? (current.dimLight ?? DEFAULT_DIM_LIGHT)
+            : (current.dimDark ?? DEFAULT_DIM_DARK)
+          return {
+            ...current,
+            theme: next,
+            dim: nextDim,
+          }
+        })
+      })
     }
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     if (!reduceMotion && typeof document.startViewTransition === 'function') {
@@ -148,8 +165,17 @@ export function AppearanceProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const setDim = useCallback((dim: number) => {
-    setPrefs((current) => ({ ...current, dim: Math.min(MAX_DIM, Math.max(0, dim)) }))
-  }, [])
+    const clamped = Math.min(MAX_DIM, Math.max(0, dim))
+    setPrefs((current) => {
+      const isLight = (current.theme ?? systemTheme) === 'light'
+      return {
+        ...current,
+        dim: clamped,
+        dimLight: isLight ? clamped : (current.dimLight ?? DEFAULT_DIM_LIGHT),
+        dimDark: !isLight ? clamped : (current.dimDark ?? DEFAULT_DIM_DARK),
+      }
+    })
+  }, [systemTheme])
 
   const setAdaptColors = useCallback((adaptColors: boolean) => {
     setPrefs((current) => ({ ...current, adaptColors }))
@@ -210,7 +236,7 @@ export function AppearanceProvider({ children }: { children: ReactNode }) {
       customBackgrounds,
       activeBackground,
       selectBackground,
-      dim: prefs.dim,
+      dim: activeDim,
       setDim,
       adaptColors: prefs.adaptColors,
       setAdaptColors,
@@ -224,7 +250,7 @@ export function AppearanceProvider({ children }: { children: ReactNode }) {
       customBackgrounds,
       activeBackground,
       selectBackground,
-      prefs.dim,
+      activeDim,
       setDim,
       prefs.adaptColors,
       setAdaptColors,

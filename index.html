@@ -21,7 +21,10 @@
             root.style.setProperty('--accent-h', String(prefs.accent.h));
             root.style.setProperty('--accent-c', String(prefs.accent.c));
           }
-          if (typeof prefs.dim === 'number') root.style.setProperty('--bg-dim', String(prefs.dim));
+          var dim = theme === 'light'
+            ? (typeof prefs.dimLight === 'number' ? prefs.dimLight : 0.72)
+            : (typeof prefs.dimDark === 'number' ? prefs.dimDark : (typeof prefs.dim === 'number' ? prefs.dim : 0.45));
+          root.style.setProperty('--bg-dim', String(dim));
         } catch (error) {
           root.dataset.theme = 'dark';
         }

@@ -1,8 +1,9 @@
 import { useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { ChevronLeft, ChevronRight, Clock3, Sparkles, X } from 'lucide-react'
 import { useDroppable } from '@dnd-kit/core'
 import type { Area, LocalDateString, ScheduleBlock } from '../../types/domain.ts'
-import { addDays, formatDateShort, parseLocalDate, toLocalDateString } from '../../lib/time.ts'
+import { addDays, formatDateShort, minutesSinceMidnight, parseLocalDate, toLocalDateString } from '../../lib/time.ts'
 import { Button } from '../ui/Button.tsx'
 import { IconButton } from '../ui/IconButton.tsx'
 import { TimelineBoard } from './TimelineBoard.tsx'
@@ -35,7 +36,7 @@ export function DayMaximizedModal({
   onOpen,
   onToggleComplete,
 }: DayMaximizedModalProps) {
-  const dialogRef = useRef<HTMLDialogElement>(null)
+  const timelineScrollRef = useRef<HTMLDivElement>(null)
 
   const isToday = date !== null && date === toLocalDateString(now)
   const isTomorrow = date !== null && date === addDays(toLocalDateString(now), 1)
@@ -45,16 +46,7 @@ export function DayMaximizedModal({
     data: { type: 'day-timeline', date: date ?? '' },
   })
 
-  useEffect(() => {
-    const dialog = dialogRef.current
-    if (!dialog) return
-    if (open && !dialog.open) {
-      dialog.showModal()
-    } else if (!open && dialog.open) {
-      dialog.close()
-    }
-  }, [open])
-
+  // Atajo de teclado: Escape para cerrar, flechas para navegar días
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (!open || !date) return
@@ -66,18 +58,35 @@ export function DayMaximizedModal({
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [open, date, onClose, onNavigateDate])
 
+  const jumpToNow = () => {
+    const container = timelineScrollRef.current
+    if (!container || !date) return
+    // Buscar la aguja horaria específicamente dentro de este contenedor maximizado
+    const needle = container.querySelector<HTMLElement>(`[data-now-needle="${date}"]`)
+    if (needle) {
+      needle.scrollIntoView({
+        block: 'center',
+        behavior: 'smooth',
+      })
+    } else {
+      const targetTop = Math.max(0, minutesSinceMidnight(now) - 200)
+      container.scrollTo({ top: targetTop, behavior: 'smooth' })
+    }
+  }
+
+  // Centrar automáticamente en la hora actual al abrir "HOY" maximizado
+  useEffect(() => {
+    if (open && isToday) {
+      const timer = window.setTimeout(() => jumpToNow(), 120)
+      return () => window.clearTimeout(timer)
+    }
+  }, [open, isToday, date])
+
   if (!open || !date) return null
 
   const dateObj = parseLocalDate(date)
   const dateLabel = formatDateShort(dateObj)
   const dayTitle = isToday ? 'HOY' : isTomorrow ? 'MAÑANA' : dateLabel
-
-  const jumpToNow = () => {
-    document.querySelector<HTMLElement>(`[data-now-needle="${date}"]`)?.scrollIntoView({
-      block: 'center',
-      behavior: 'smooth',
-    })
-  }
 
   const handlePrevDay = () => onNavigateDate(addDays(date, -1))
   const handleNextDay = () => onNavigateDate(addDays(date, 1))
@@ -85,13 +94,22 @@ export function DayMaximizedModal({
   const timedBlocks = blocks.filter((b) => b.start_time !== null)
   const untimedBlocks = blocks.filter((b) => b.start_time === null)
 
-  return (
-    <dialog
-      ref={dialogRef}
-      onClose={onClose}
-      className="m-auto w-[min(94vw,64rem)] rounded-3xl border border-glass-border bg-popover p-0 text-ink shadow-2xl backdrop-blur-2xl backdrop:bg-black/65 backdrop:backdrop-blur-sm"
-    >
-      <div className="flex max-h-[92vh] flex-col overflow-hidden">
+  return createPortal(
+    <div className="fixed inset-0 z-40 flex items-center justify-center p-2 sm:p-4 md:p-6">
+      {/* Fondo difuminado interactivo */}
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 animate-fade-in bg-black/65 backdrop-blur-md"
+        onClick={onClose}
+      />
+
+      {/* Ventana flotante de día maximizado */}
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Día maximizado: ${dayTitle}`}
+        className="glass-popover relative flex max-h-[94vh] w-[min(96vw,66rem)] animate-pop-in flex-col overflow-hidden rounded-3xl border border-glass-border shadow-2xl"
+      >
         {/* Encabezado del día maximizado */}
         <header className="flex min-h-16 shrink-0 items-center justify-between gap-3 border-b border-glass-border bg-glass/60 px-4 py-3 sm:px-6">
           <div className="flex items-center gap-2">
@@ -141,8 +159,8 @@ export function DayMaximizedModal({
           </div>
         </header>
 
-        {/* Tablero temporal completo de 24 horas */}
-        <div className="h-[64vh] overflow-y-auto overscroll-contain">
+        {/* Tablero temporal completo de 24 horas con scroll focalizado */}
+        <div ref={timelineScrollRef} className="h-[64vh] overflow-y-auto overscroll-contain">
           <TimelineBoard
             date={date}
             blocks={blocks}
@@ -166,6 +184,7 @@ export function DayMaximizedModal({
           onToggleComplete={onToggleComplete}
         />
       </div>
-    </dialog>
+    </div>,
+    document.body,
   )
 }

@@ -25,11 +25,18 @@ export interface BackgroundOption {
   tone?: AccentTone
 }
 
+export const DEFAULT_DIM_DARK = 0.45
+export const DEFAULT_DIM_LIGHT = 0.72
+
 export interface AppearancePrefs {
   /** null = seguir la preferencia del sistema. */
   theme: ThemeMode | null
   backgroundId: string
-  /** Atenuación del fondo multimedia, 0 a 0.85. */
+  /** Atenuación para modo oscuro (0 a 0.85). */
+  dimDark?: number
+  /** Atenuación para modo claro (0 a 0.85). */
+  dimLight?: number
+  /** Atenuación activa (retrocompatibilidad). */
   dim: number
   adaptColors: boolean
   /** Último acento aplicado; lo usa el script inline de index.html para evitar parpadeos. */
@@ -57,7 +64,9 @@ export const DEFAULT_BACKGROUND_ID = BUILTIN_BACKGROUNDS[0].id
 export const DEFAULT_PREFS: AppearancePrefs = {
   theme: null,
   backgroundId: DEFAULT_BACKGROUND_ID,
-  dim: 0.45,
+  dimDark: DEFAULT_DIM_DARK,
+  dimLight: DEFAULT_DIM_LIGHT,
+  dim: DEFAULT_DIM_DARK,
   adaptColors: true,
   accent: DEFAULT_TONE,
 }
@@ -104,10 +113,21 @@ export function loadPrefs(): AppearancePrefs {
     const raw = localStorage.getItem(APPEARANCE_STORAGE_KEY)
     if (!raw) return DEFAULT_PREFS
     const parsed = JSON.parse(raw) as Partial<AppearancePrefs>
+    const theme = parsed.theme === 'light' || parsed.theme === 'dark' ? parsed.theme : null
+    const dimDark = typeof parsed.dimDark === 'number'
+      ? Math.min(MAX_DIM, Math.max(0, parsed.dimDark))
+      : (typeof parsed.dim === 'number' && theme !== 'light' ? parsed.dim : DEFAULT_DIM_DARK)
+    const dimLight = typeof parsed.dimLight === 'number'
+      ? Math.min(MAX_DIM, Math.max(0, parsed.dimLight))
+      : (typeof parsed.dim === 'number' && theme === 'light' ? parsed.dim : DEFAULT_DIM_LIGHT)
+    const currentDim = theme === 'light' ? dimLight : dimDark
+
     return {
-      theme: parsed.theme === 'light' || parsed.theme === 'dark' ? parsed.theme : null,
+      theme,
       backgroundId: typeof parsed.backgroundId === 'string' ? parsed.backgroundId : DEFAULT_BACKGROUND_ID,
-      dim: typeof parsed.dim === 'number' ? Math.min(MAX_DIM, Math.max(0, parsed.dim)) : DEFAULT_PREFS.dim,
+      dimDark,
+      dimLight,
+      dim: currentDim,
       adaptColors: typeof parsed.adaptColors === 'boolean' ? parsed.adaptColors : true,
       accent: isValidTone(parsed.accent) ? parsed.accent : DEFAULT_TONE,
     }
