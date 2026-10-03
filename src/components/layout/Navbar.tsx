@@ -1,9 +1,14 @@
-import { Hourglass } from 'lucide-react'
+import { useState } from 'react'
+import { BarChart3, Hourglass } from 'lucide-react'
+import { AnalyticsModal } from '../analytics/AnalyticsModal.tsx'
+import { Button } from '../ui/Button.tsx'
 import { GlassPanel } from '../ui/GlassPanel.tsx'
 import { Clock } from './Clock.tsx'
 import { UserMenu } from './UserMenu.tsx'
 
 export function Navbar() {
+  const [showAnalytics, setShowAnalytics] = useState(false)
+
   return (
     <GlassPanel
       as="header"
@@ -21,10 +26,21 @@ export function Navbar() {
         </div>
       </div>
 
-      <div className="flex shrink-0 items-center gap-3 sm:gap-5">
+      <div className="flex shrink-0 items-center gap-2 sm:gap-4">
         <Clock />
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => setShowAnalytics(true)}
+          leadingIcon={<BarChart3 className="size-4 text-accent" />}
+          aria-label="Abrir métricas y analítica"
+        >
+          <span className="hidden sm:inline">Métricas</span>
+        </Button>
         <UserMenu />
       </div>
+
+      <AnalyticsModal open={showAnalytics} onClose={() => setShowAnalytics(false)} />
     </GlassPanel>
   )
 }
