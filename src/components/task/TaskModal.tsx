@@ -12,7 +12,8 @@ import { DurationPicker } from '../ui/DurationPicker.tsx'
 import { FileList } from './FileList.tsx'
 import { FilePreviewModal } from './FilePreviewModal.tsx'
 import { FileUploader } from './FileUploader.tsx'
-import { NotesLinkBar, renderTextWithLinks } from '../../lib/linkUtils.tsx'
+import { NotesLinkBar } from '../../lib/linkUtils.tsx'
+import { NotesEditor } from '../ui/NotesEditor.tsx'
 import { RecurrenceSelector } from '../ui/RecurrenceSelector.tsx'
 import type { RecurrenceRule } from '../../lib/recurrence.ts'
 
@@ -28,7 +29,7 @@ export function TaskModal({ task, onClose, onSave }: TaskModalProps) {
   const toast = useToast()
   const [title, setTitle] = useState('')
   const [notes, setNotes] = useState('')
-  const [previewNotes, setPreviewNotes] = useState(false)
+
   const [duration, setDuration] = useState(30)
   const [priorityStr, setPriorityStr] = useState('0')
   const [areaId, setAreaId] = useState('')
@@ -193,33 +194,15 @@ export function TaskModal({ task, onClose, onSave }: TaskModalProps) {
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <div className="flex items-center justify-between">
-                <label htmlFor={`${uid}-notes`} className="text-sm font-medium text-ink">Notas</label>
-                {notes.trim() ? (
-                  <button
-                    type="button"
-                    onClick={() => setPreviewNotes((prev) => !prev)}
-                    className="text-xs font-medium text-accent hover:underline cursor-pointer"
-                  >
-                    {previewNotes ? 'Modo editor' : 'Vista con enlaces'}
-                  </button>
-                ) : null}
-              </div>
-              {previewNotes ? (
-                <div className="glass-input min-h-20 py-2.5 px-3 whitespace-pre-wrap text-sm text-ink select-text">
-                  {renderTextWithLinks(notes)}
-                </div>
-              ) : (
-                <textarea
-                  id={`${uid}-notes`}
-                  rows={3}
-                  maxLength={4000}
-                  value={notes}
-                  onChange={(event) => setNotes(event.target.value)}
-                  placeholder="Notas, detalles o enlaces (se detectarán automáticamente)..."
-                  className="glass-input resize-y py-3"
-                />
-              )}
+              <label htmlFor={`${uid}-notes`} className="text-sm font-medium text-ink">Notas</label>
+              <NotesEditor
+                id={`${uid}-notes`}
+                rows={3}
+                maxLength={4000}
+                value={notes}
+                onChange={setNotes}
+                placeholder="Notas, detalles o enlaces (se detectarán automáticamente)..."
+              />
               <NotesLinkBar notes={notes} />
             </div>
 

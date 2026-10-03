@@ -142,7 +142,59 @@ export function extractUrls(text: string): DetectedLink[] {
   }
   return Array.from(unique.values())
 }
+export interface ExtractedUrlWithIndex {
+  url: string
+  display: string
+  start: number
+  end: number
+}
 
+export function extractUrlsWithIndices(text: string): ExtractedUrlWithIndex[] {
+  if (!text) return []
+  const regex = /(https?:\/\/[^\s<>"'{}|\\^`]+|www\.[^\s<>"'{}|\\^`]+)/gi
+  const results: ExtractedUrlWithIndex[] = []
+  let match: RegExpExecArray | null
+  while ((match = regex.exec(text)) !== null) {
+    const raw = match[0]
+    const trailingPunctuation = raw.match(/[.,;:!?)]+$/)?.[0] ?? ''
+    const clean = raw.slice(0, raw.length - trailingPunctuation.length)
+    if (clean.length > 3) {
+      results.push({
+        url: normalizeUrl(clean),
+        display: clean,
+        start: match.index,
+        end: match.index + clean.length,
+      })
+    }
+  }
+  return results
+}
+
+/**
+ * Renderiza el texto formateado para el fondo del editor de notas,
+ * coloreando las URLs automáticamente en azul con subrayado.
+ */
+export function renderHighlightedNotes(text: string): ReactNode {
+  if (!text) return null
+  const content = text.endsWith('\n') ? text + ' ' : text
+  const parts = content.split(/(https?:\/\/[^\s<>"'{}|\\^`]+|www\.[^\s<>"'{}|\\^`]+)/gi)
+
+  return parts.map((part, index) => {
+    if (/(https?:\/\/[^\s<>"'{}|\\^`]+|www\.[^\s<>"'{}|\\^`]+)/i.test(part)) {
+      const trailingPunctuation = part.match(/[.,;:!?)]+$/)?.[0] ?? ''
+      const cleanUrl = part.slice(0, part.length - trailingPunctuation.length)
+      return (
+        <span key={index}>
+          <span className="text-blue-400 font-semibold underline decoration-blue-400/80">
+            {cleanUrl}
+          </span>
+          <span className="text-ink">{trailingPunctuation}</span>
+        </span>
+      )
+    }
+    return <span key={index} className="text-ink">{part}</span>
+  })
+}
 /**
  * Renderiza un texto reemplazando las URLs encontradas por enlaces <a> clicables
  * en color azul con apertura segura en una nueva pestaña.
