@@ -104,8 +104,8 @@ function ScheduleBlockCardComponent({
       }}
       aria-label={`${block.title}, ${formatDuration(block.planned_duration_minutes)}${block.start_time ? `, ${minutesToHM(startMinutes)}` : ', sin hora'}${muted ? `, ámbito oculto: ${area?.name}` : ''}`}
       className={clsx(
-        'glass-block flex min-w-0 cursor-pointer items-center gap-1 overflow-hidden px-1.5 py-1 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent',
-        untimed ? 'min-h-11 w-full' : 'absolute inset-x-0',
+        'glass-block flex flex-col justify-start min-w-0 cursor-pointer overflow-hidden px-1.5 pt-1 pb-2 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent',
+        untimed ? 'min-h-12 w-full' : 'absolute inset-x-0',
         muted && 'glass-muted',
         parsedStatus.status === 'failed_abandoned' && 'border-danger/40 bg-danger/5',
         block.is_completed && 'opacity-60',
@@ -114,73 +114,83 @@ function ScheduleBlockCardComponent({
       )}
       title={`${block.title} · ${formatDuration(block.planned_duration_minutes)}${muted ? ` · ámbito oculto: ${area?.name}` : ''}`}
     >
-      <IconButton
-        ref={setActivatorNodeRef}
-        label={`Mover ${block.title}`}
-        size="sm"
-        className="size-8 shrink-0 cursor-grab touch-none active:cursor-grabbing select-none"
-        style={{ touchAction: 'none', WebkitUserSelect: 'none', userSelect: 'none' }}
-        {...attributes}
-        {...listeners}
-      >
-        <GripVertical />
-      </IconButton>
-      <div
-        className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden text-left"
-      >
-        {block.is_routine ? (
-          <Sparkles aria-label="Rutina cotidiana" className="size-3 shrink-0 text-accent" />
+      {/* Fila principal: Manija de arrastre, título prominente y botones de acción */}
+      <div className="flex w-full min-w-0 items-center justify-between gap-1">
+        <div className="flex min-w-0 flex-1 items-center gap-1">
+          <IconButton
+            ref={setActivatorNodeRef}
+            label={`Mover ${block.title}`}
+            size="sm"
+            className="size-7 shrink-0 cursor-grab touch-none active:cursor-grabbing select-none text-ink-muted hover:text-ink"
+            style={{ touchAction: 'none', WebkitUserSelect: 'none', userSelect: 'none' }}
+            {...attributes}
+            {...listeners}
+          >
+            <GripVertical className="size-4" />
+          </IconButton>
+          {block.is_routine ? (
+            <Sparkles aria-label="Rutina cotidiana" className="size-3.5 shrink-0 text-accent" />
+          ) : null}
+          <span
+            className={clsx(
+              'min-w-0 flex-1 font-semibold text-xs leading-snug select-none text-ink',
+              height >= 70 ? 'line-clamp-2' : 'truncate',
+              parsedStatus.status === 'failed_abandoned' && 'line-through text-danger/80',
+              block.is_completed && 'line-through text-ink-muted',
+            )}
+          >
+            {block.title}
+          </span>
+        </div>
+
+        <div className="flex shrink-0 items-center gap-0.5">
+          <IconButton
+            label={block.is_completed ? `Reabrir ${block.title}` : `Completar ${block.title}`}
+            size="sm"
+            className="size-7 shrink-0 text-ink-muted hover:text-accent"
+            onClick={() => onToggleComplete(block)}
+          >
+            {block.is_completed ? <Undo2 className="size-3.5" /> : <Check className="size-3.5" />}
+          </IconButton>
+          <IconButton
+            label={`Eliminar bloque ${block.title}`}
+            size="sm"
+            variant="danger"
+            className="size-7 shrink-0 text-ink-muted hover:text-danger"
+            onClick={() => onDelete(block.id)}
+          >
+            <Trash2 className="size-3.5" />
+          </IconButton>
+        </div>
+      </div>
+
+      {/* Fila secundaria: Horario, duración y estados con alineación limpia bajo el título */}
+      <div className="flex w-full min-w-0 items-center gap-1.5 pl-8 text-[10px] tabular-nums text-ink-muted select-none mt-0.5">
+        {block.start_time ? (
+          <span className="font-medium text-ink-base">
+            {height >= 90
+              ? `${minutesToHM(startMinutes)} – ${minutesToHM(Math.min(1440, startMinutes + effectiveDuration))}`
+              : minutesToHM(startMinutes)}
+          </span>
         ) : null}
-        <span
-          className={clsx(
-            'min-w-0 flex-1 truncate text-xs font-semibold select-none',
-            parsedStatus.status === 'failed_abandoned' ? 'line-through text-danger/80' : 'text-ink',
-          )}
-        >
-          {block.title}
-        </span>
+        {block.start_time ? <span>·</span> : null}
+        <span>{formatDuration(effectiveDuration)}</span>
+
         {parsedStatus.status === 'failed_abandoned' ? (
-          <span className="shrink-0 rounded bg-danger/20 px-1 py-0.5 text-[9px] font-bold text-danger">
+          <span className="shrink-0 rounded bg-danger/20 px-1 py-0.2 text-[9px] font-bold text-danger">
             Fallida
           </span>
         ) : parsedStatus.status === 'failed_time' ? (
-          <span className="shrink-0 rounded bg-warning/20 px-1 py-0.5 text-[9px] font-bold text-warning">
+          <span className="shrink-0 rounded bg-warning/20 px-1 py-0.2 text-[9px] font-bold text-warning">
             Excedida
           </span>
         ) : null}
         {parsedStatus.metricProgress ? (
-          <span className="hidden sm:inline-block shrink-0 rounded bg-accent/15 px-1 py-0.5 text-[9px] font-semibold text-accent">
+          <span className="shrink-0 rounded bg-accent/15 px-1 py-0.2 text-[9px] font-semibold text-accent">
             {parsedStatus.metricProgress}
           </span>
         ) : null}
-        {(untimed || height >= 54) ? (
-          <span className="shrink-0 text-[10px] tabular-nums text-ink-muted select-none">
-            {block.start_time ? minutesToHM(startMinutes) : formatDuration(effectiveDuration)}
-          </span>
-        ) : null}
-        {height >= 82 ? (
-          <span className="shrink-0 text-[10px] tabular-nums text-ink-muted select-none">
-            {formatDuration(effectiveDuration)}
-          </span>
-        ) : null}
       </div>
-      <IconButton
-        label={block.is_completed ? `Reabrir ${block.title}` : `Completar ${block.title}`}
-        size="sm"
-        className="size-8 shrink-0"
-        onClick={() => onToggleComplete(block)}
-      >
-        {block.is_completed ? <Undo2 /> : <Check />}
-      </IconButton>
-      <IconButton
-        label={`Eliminar bloque ${block.title}`}
-        size="sm"
-        variant="danger"
-        className="size-8 shrink-0"
-        onClick={() => onDelete(block.id)}
-      >
-        <Trash2 />
-      </IconButton>
 
       {/* Indicador flotante durante el redimensionamiento: muestra la hora exacta en la que finalizará */}
       {isResizing ? (
@@ -202,7 +212,7 @@ function ScheduleBlockCardComponent({
           aria-label={`Ajustar duración de ${block.title}`}
           aria-valuenow={effectiveDuration}
           onPointerDown={handleResizeStart}
-          className="absolute bottom-0 inset-x-0 h-3 cursor-ns-resize group/resize flex items-end justify-center pb-0.5 z-20 touch-none select-none"
+          className="absolute bottom-0 inset-x-0 h-2.5 cursor-ns-resize group/resize flex items-end justify-center pb-0.5 z-20 touch-none select-none"
           title="Arrastrar para extender o reducir duración (pasos de 15 min)"
         >
           <div className="h-1 w-8 rounded-full bg-white/30 transition-all group-hover/resize:h-1.5 group-hover/resize:bg-accent group-hover/resize:w-12 shadow-sm" />

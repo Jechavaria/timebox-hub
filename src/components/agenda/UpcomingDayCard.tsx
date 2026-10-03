@@ -1,10 +1,135 @@
 import clsx from 'clsx'
-import { CalendarPlus, Check, Clock, Maximize2, Pencil, Sparkles, Trash2, Undo2 } from 'lucide-react'
-import { useDroppable } from '@dnd-kit/core'
+import { CalendarPlus, Check, Clock, GripVertical, Maximize2, Pencil, Sparkles, Trash2, Undo2 } from 'lucide-react'
+import { useDraggable, useDroppable } from '@dnd-kit/core'
+import { CSS } from '@dnd-kit/utilities'
 import type { Area, LocalDateString, ScheduleBlock } from '../../types/domain.ts'
 import { formatDateShort, formatDuration, minutesToHM, parseLocalDate, timeToMinutes } from '../../lib/time.ts'
 import { IconButton } from '../ui/IconButton.tsx'
 import { Button } from '../ui/Button.tsx'
+
+interface UpcomingBlockRowProps {
+  block: ScheduleBlock
+  area?: Area
+  onOpen: (block: ScheduleBlock) => void
+  onToggleComplete: (block: ScheduleBlock) => void
+  onDelete: (blockId: string) => void
+}
+
+function UpcomingBlockRow({
+  block,
+  area,
+  onOpen,
+  onToggleComplete,
+  onDelete,
+}: UpcomingBlockRowProps) {
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, isDragging } = useDraggable({
+    id: `block:${block.id}`,
+    data: {
+      type: 'schedule-block',
+      blockId: block.id,
+      durationMinutes: block.planned_duration_minutes,
+    },
+  })
+
+  const areaColor = area?.color ?? '#8a909c'
+  const startMinutes = block.start_time ? timeToMinutes(block.start_time) : null
+
+  const style = {
+    '--area-color': areaColor,
+    transform: isDragging ? undefined : CSS.Transform.toString(transform),
+    opacity: isDragging ? 0.35 : block.is_completed ? 0.6 : undefined,
+    zIndex: isDragging ? 30 : undefined,
+    willChange: isDragging ? 'transform' : undefined,
+  } as React.CSSProperties
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          const target = e.target as HTMLElement
+          if (target.closest('button, [role="button"], input, a')) return
+          e.preventDefault()
+          onOpen(block)
+        }
+      }}
+      onClick={(e) => {
+        const target = e.target as HTMLElement
+        if (target.closest('button, [role="button"], input, a')) return
+        onOpen(block)
+      }}
+      className={clsx(
+        'glass-block flex cursor-pointer items-center gap-1.5 px-2 py-1.5 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent',
+        block.is_completed && 'opacity-60',
+        isDragging && 'ring-2 ring-accent/70',
+      )}
+    >
+      <IconButton
+        ref={setActivatorNodeRef}
+        label={`Mover ${block.title}`}
+        size="sm"
+        className="size-7 shrink-0 cursor-grab touch-none active:cursor-grabbing select-none text-ink-muted hover:text-ink"
+        style={{ touchAction: 'none', WebkitUserSelect: 'none', userSelect: 'none' }}
+        {...attributes}
+        {...listeners}
+      >
+        <GripVertical className="size-4" />
+      </IconButton>
+
+      <span
+        aria-hidden="true"
+        className="size-2 shrink-0 rounded-full"
+        style={{ backgroundColor: areaColor }}
+      />
+
+      <div
+        className="flex min-w-0 flex-1 flex-col justify-center text-left select-none"
+        title={block.title}
+      >
+        <span
+          className={clsx(
+            'truncate text-xs font-semibold text-ink',
+            block.is_completed && 'line-through text-ink-muted',
+          )}
+        >
+          {block.title}
+        </span>
+        <span className="text-[10px] tabular-nums text-ink-muted">
+          {startMinutes !== null ? `${minutesToHM(startMinutes)} · ` : ''}
+          {formatDuration(block.planned_duration_minutes)}
+        </span>
+      </div>
+
+      <IconButton
+        label={block.is_completed ? `Reabrir ${block.title}` : `Completar ${block.title}`}
+        size="sm"
+        className="size-7 shrink-0 text-ink-muted hover:text-accent"
+        onClick={() => onToggleComplete(block)}
+      >
+        {block.is_completed ? <Undo2 className="size-3.5" /> : <Check className="size-3.5" />}
+      </IconButton>
+      <IconButton
+        label={`Editar ${block.title}`}
+        size="sm"
+        className="size-7 shrink-0 text-ink-muted hover:text-ink"
+        onClick={() => onOpen(block)}
+      >
+        <Pencil className="size-3.5" />
+      </IconButton>
+      <IconButton
+        label={`Eliminar ${block.title}`}
+        size="sm"
+        variant="danger"
+        className="size-7 shrink-0 text-ink-muted hover:text-danger"
+        onClick={() => onDelete(block.id)}
+      >
+        <Trash2 className="size-3.5" />
+      </IconButton>
+    </div>
+  )
+}
 
 interface UpcomingDayCardProps {
   date: LocalDateString
@@ -105,79 +230,16 @@ export function UpcomingDayCard({
       {/* Lista de objetos (pendientes) de seguido */}
       <div className="flex flex-1 flex-col gap-2 p-2.5">
         {sortedBlocks.length > 0 ? (
-          sortedBlocks.map((block) => {
-            const area = block.area_id ? areasById.get(block.area_id) : undefined
-            const areaColor = area?.color ?? '#8a909c'
-            const startMinutes = block.start_time ? timeToMinutes(block.start_time) : null
-
-            return (
-              <div
-                key={block.id}
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    const target = e.target as HTMLElement
-                    if (target.closest('button, [role="button"], input, a')) return
-                    e.preventDefault()
-                    onOpen(block)
-                  }
-                }}
-                onClick={(e) => {
-                  const target = e.target as HTMLElement
-                  if (target.closest('button, [role="button"], input, a')) return
-                  onOpen(block)
-                }}
-                className={clsx(
-                  'glass-block flex cursor-pointer items-center gap-1.5 px-2 py-1.5 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent',
-                  block.is_completed && 'opacity-60',
-                )}
-                style={{ '--area-color': areaColor } as React.CSSProperties}
-              >
-                <span
-                  aria-hidden="true"
-                  className="size-2 shrink-0 rounded-full"
-                  style={{ backgroundColor: areaColor }}
-                />
-                <div
-                  className="flex min-w-0 flex-1 items-center gap-2 text-left select-none"
-                  title={block.title}
-                >
-                  <span className={clsx('min-w-0 flex-1 truncate text-xs font-medium text-ink', block.is_completed && 'line-through text-ink-muted')}>
-                    {block.title}
-                  </span>
-                  <span className="shrink-0 rounded-md bg-canvas/40 px-1.5 py-0.5 text-[10px] tabular-nums text-ink-muted border border-glass-border">
-                    {startMinutes !== null ? minutesToHM(startMinutes) : formatDuration(block.planned_duration_minutes)}
-                  </span>
-                </div>
-
-                <IconButton
-                  label={block.is_completed ? `Reabrir ${block.title}` : `Completar ${block.title}`}
-                  size="sm"
-                  className="size-7 shrink-0"
-                  onClick={() => onToggleComplete(block)}
-                >
-                  {block.is_completed ? <Undo2 className="size-3.5" /> : <Check className="size-3.5" />}
-                </IconButton>
-                <IconButton
-                  label={`Editar ${block.title}`}
-                  size="sm"
-                  className="size-7 shrink-0"
-                  onClick={() => onOpen(block)}
-                >
-                  <Pencil className="size-3.5" />
-                </IconButton>
-                <IconButton
-                  label={`Eliminar ${block.title}`}
-                  size="sm"
-                  variant="danger"
-                  className="size-7 shrink-0"
-                  onClick={() => onDelete(block.id)}
-                >
-                  <Trash2 className="size-3.5" />
-                </IconButton>
-              </div>
-            )
-          })
+          sortedBlocks.map((block) => (
+            <UpcomingBlockRow
+              key={block.id}
+              block={block}
+              area={block.area_id ? areasById.get(block.area_id) : undefined}
+              onOpen={onOpen}
+              onToggleComplete={onToggleComplete}
+              onDelete={onDelete}
+            />
+          ))
         ) : (
           <button
             type="button"

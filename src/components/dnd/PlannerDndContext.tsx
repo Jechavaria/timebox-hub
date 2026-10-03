@@ -230,12 +230,23 @@ export function PlannerDndContext({ children }: PlannerDndContextProps) {
     const startMinutes = target.type === 'day-untimed'
       ? null
       : getDropStartMinutes(event, target.date, source.durationMinutes)
+    const currentBlock = planner.schedule.blocks.find((b) => b.id === source.blockId)
+    const isChangingDate = currentBlock && currentBlock.scheduled_date !== target.date
+
     const result = await planner.schedule.moveBlock(source.blockId, target.date, startMinutes)
     if (!result.ok) {
       toast.error(result.message, 'No se pudo reprogramar')
       return
     }
-    toast.success(startMinutes === null ? 'El bloque volvió a Sin hora.' : 'Bloque reprogramado.')
+    if (isChangingDate) {
+      toast.success(
+        startMinutes === null
+          ? `Tarea movida al ${target.date}.`
+          : `Tarea reprogramada para el ${target.date} a las ${minutesToHM(startMinutes)}.`,
+      )
+    } else {
+      toast.success(startMinutes === null ? 'El bloque volvió a Sin hora.' : 'Bloque reprogramado.')
+    }
   }
 
   const activeLabel = describeActive(activeData, titleById)
@@ -248,9 +259,9 @@ export function PlannerDndContext({ children }: PlannerDndContextProps) {
       sensors={sensors}
       collisionDetection={plannerCollision}
       autoScroll={{
-        threshold: { x: 0.03, y: 0.05 },
-        acceleration: 1.5,
-        interval: 16,
+        threshold: { x: 0.05, y: 0.07 },
+        acceleration: 2.2,
+        interval: 14,
       }}
       onDragStart={handleDragStart}
       onDragMove={handleDragMove}
