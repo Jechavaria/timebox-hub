@@ -93,11 +93,11 @@ export function Matrix() {
       ) : null}
 
       {isLoading ? (
-        <div className="grid min-h-[220px] flex-1 place-items-center">
+        <div className="grid min-h-0 flex-1 place-items-center">
           <Spinner label="Cargando ámbitos y tareas" />
         </div>
       ) : areaState.areas.length === 0 ? (
-        <div className="grid min-h-[220px] flex-1 place-items-center p-6 text-center">
+        <div className="grid min-h-0 flex-1 place-items-center p-6 text-center">
           <div className="max-w-sm pb-4">
             <span className="mx-auto grid size-12 place-items-center rounded-2xl bg-accent-soft text-accent">
               <LayoutGrid className="size-6" aria-hidden="true" />
@@ -111,7 +111,7 @@ export function Matrix() {
           </div>
         </div>
       ) : visibleAreas.length === 0 ? (
-        <div className="grid min-h-[200px] flex-1 place-items-center p-6 text-center">
+        <div className="grid min-h-0 flex-1 place-items-center p-6 text-center">
           <p className="max-w-sm text-sm text-ink-muted">Todos los ámbitos están ocultos. Activa uno arriba para volver a mostrarlo.</p>
         </div>
       ) : (
