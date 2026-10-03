@@ -1,7 +1,5 @@
-const { app, BrowserWindow, Menu, shell } = require('electron');
+const { app, BrowserWindow, Menu, shell, session } = require('electron');
 const path = require('path');
-
-const LIVE_URL = 'https://timebox-hub.vercel.app/';
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -18,45 +16,43 @@ function createWindow() {
       nodeIntegration: false,
       contextIsolation: true,
       sandbox: true,
+      spellcheck: false,
     },
   });
 
-  // Remove default menu bar for clean app aesthetic
+  // Ocultar barra de menú por defecto para diseño limpio de aplicación nativa
   Menu.setApplicationMenu(null);
 
   const distPath = path.join(__dirname, '../dist/index.html');
 
-  // Intenta cargar la versión viva en Vercel para sincronización automática instantánea con GitHub
-  win.loadURL(LIVE_URL).catch(() => {
-    // Fallback a archivos locales empaquetados si no hay internet al iniciar
-    win.loadFile(distPath).catch(() => {});
-  });
-
-  // Si se cae la conexión durante la carga inicial, cambia a la copia local sin romperse
-  win.webContents.on('did-fail-load', (event, errorCode) => {
-    // -3 es ABORTED (por ejemplo, cancelado por el usuario), no hacer fallback en ese caso
-    if (errorCode !== -3) {
-      win.loadFile(distPath).catch(() => {});
-    }
+  // Cargar directamente los archivos locales empaquetados para funcionamiento 100% nativo y veloz
+  win.loadFile(distPath).catch((err) => {
+    console.error('Error al cargar la interfaz local:', err);
   });
 
   win.once('ready-to-show', () => {
     win.show();
   });
 
-  // Open external links in default browser instead of electron window
+  // Abrir enlaces externos (Google Docs, enlaces web, adjuntos) en el navegador predeterminado
   win.webContents.setWindowOpenHandler(({ url }) => {
     if (url.startsWith('http:') || url.startsWith('https:')) {
-      if (!url.startsWith(LIVE_URL)) {
-        shell.openExternal(url);
-        return { action: 'deny' };
-      }
+      shell.openExternal(url);
+      return { action: 'deny' };
     }
     return { action: 'allow' };
   });
+
+  // Prevenir navegación interna accidental a sitios web externos
+  win.webContents.on('will-navigate', (event, url) => {
+    if (url.startsWith('http:') || url.startsWith('https:')) {
+      event.preventDefault();
+      shell.openExternal(url);
+    }
+  });
 }
 
-// Single instance lock: if another instance is opened, focus the existing window
+// Bloqueo de instancia única: si ya está abierta, traer al frente la ventana existente
 const gotTheLock = app.requestSingleInstanceLock();
 if (!gotTheLock) {
   app.quit();
@@ -69,7 +65,18 @@ if (!gotTheLock) {
     }
   });
 
-  app.whenReady().then(createWindow);
+  app.whenReady().then(async () => {
+    // Limpiar cachés y service workers heredados para evitar pantallas en negro por colisión de versiones
+    try {
+      await session.defaultSession.clearStorageData({
+        storages: ['serviceworkers', 'cachestorage'],
+      });
+    } catch {
+      // Ignorar errores de limpieza de almacenamiento
+    }
+
+    createWindow();
+  });
 
   app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') {
