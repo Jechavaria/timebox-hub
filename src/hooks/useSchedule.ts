@@ -7,6 +7,7 @@ import { resolveStack } from '../lib/timeline.ts'
 import { addDays, minutesToTime, timeToMinutes } from '../lib/time.ts'
 import { supabase } from '../lib/supabase.ts'
 import type {
+  CreateRoutineBlockInput,
   LocalDateString,
   MasterTask,
   MutationResult,
@@ -25,6 +26,7 @@ export interface UseScheduleResult {
     scheduledDate: LocalDateString,
     startMinutes: number | null,
   ) => Promise<MutationResult<ScheduleBlock>>
+  createRoutineBlock: (input: CreateRoutineBlockInput) => Promise<MutationResult<ScheduleBlock>>
   moveBlock: (
     blockId: string,
     scheduledDate: LocalDateString,
@@ -254,6 +256,50 @@ export function useSchedule(): UseScheduleResult {
     [persistPlacement, userId],
   )
 
+  const createRoutineBlock = useCallback<UseScheduleResult['createRoutineBlock']>(
+    async ({ title, notes = '', scheduledDate, plannedDurationMinutes, startTime = null, areaId = null }) => {
+      if (!userId) return { ok: false, message: 'Debes iniciar sesión.' }
+      const cleanTitle = title.trim()
+      if (!cleanTitle || cleanTitle.length > 120) {
+        return { ok: false, message: 'El título debe tener entre 1 y 120 caracteres.' }
+      }
+      if (!Number.isInteger(plannedDurationMinutes) || plannedDurationMinutes < 1 || plannedDurationMinutes > 1440) {
+        return { ok: false, message: 'La duración debe estar entre 1 y 1440 minutos.' }
+      }
+
+      let startMinutes: number | null = null
+      if (startTime) {
+        try {
+          startMinutes = timeToMinutes(startTime)
+        } catch {
+          return { ok: false, message: 'La hora de inicio no es válida.' }
+        }
+        if (startMinutes + plannedDurationMinutes > 1440) {
+          return { ok: false, message: OUTSIDE_DAY_ERROR }
+        }
+      }
+
+      const routineBlock: ScheduleBlock = {
+        id: createUuid(),
+        user_id: userId,
+        master_task_id: null,
+        area_id: areaId,
+        title: cleanTitle,
+        notes,
+        scheduled_date: scheduledDate,
+        start_time: startTime,
+        planned_duration_minutes: plannedDurationMinutes,
+        actual_duration_minutes: null,
+        is_completed: false,
+        is_routine: true,
+        created_at: new Date().toISOString(),
+      }
+
+      return persistPlacement(routineBlock, scheduledDate, startMinutes)
+    },
+    [persistPlacement, userId],
+  )
+
   const moveBlock = useCallback<UseScheduleResult['moveBlock']>(
     async (blockId, scheduledDate, startMinutes) => {
       const block = blocks.find((candidate) => candidate.id === blockId)
@@ -316,5 +362,15 @@ export function useSchedule(): UseScheduleResult {
     [blocks, userId],
   )
 
-  return { blocks, isLoading, error, refresh, cloneTaskToBlock, moveBlock, updateBlock, deleteBlock }
+  return {
+    blocks,
+    isLoading,
+    error,
+    refresh,
+    cloneTaskToBlock,
+    createRoutineBlock,
+    moveBlock,
+    updateBlock,
+    deleteBlock,
+  }
 }

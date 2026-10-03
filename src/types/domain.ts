@@ -141,6 +141,15 @@ export type TaskFileUpdate = Partial<Omit<TaskFileInsert, 'id' | 'user_id' | 'ma
 
 export type RoutineKind = 'sleep' | 'transport' | 'meal' | 'leisure'
 
+export type CreateRoutineBlockInput = {
+  title: string
+  notes?: string
+  scheduledDate: LocalDateString
+  plannedDurationMinutes: number
+  startTime?: string | null
+  areaId?: string | null
+}
+
 export type AgendaView = 'today-tomorrow' | 'week'
 
 export type BlockTone = 'active' | 'muted' | 'neutral'

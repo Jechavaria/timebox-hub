@@ -14,6 +14,7 @@ import { Modal } from '../ui/Modal.tsx'
 import { Spinner } from '../ui/Spinner.tsx'
 import { BlockModal } from '../task/BlockModal.tsx'
 import { CompleteBlockDialog } from '../task/CompleteBlockDialog.tsx'
+import { RoutineModal } from '../task/RoutineModal.tsx'
 import { DayDrawer } from './DayDrawer.tsx'
 
 const AGENDA_VIEW_STORAGE_KEY = 'timebox_agenda_view'
@@ -27,6 +28,7 @@ export function Agenda() {
     const saved = localStorage.getItem(AGENDA_VIEW_STORAGE_KEY)
     return saved === 'week' ? 'week' : 'today-tomorrow'
   })
+  const [routineDate, setRoutineDate] = useState<string | null>(null)
   const [blockToEdit, setBlockToEdit] = useState<ScheduleBlock | null>(null)
   const [blockToComplete, setBlockToComplete] = useState<ScheduleBlock | null>(null)
   const [blockToDelete, setBlockToDelete] = useState<ScheduleBlock | null>(null)
@@ -119,6 +121,7 @@ export function Agenda() {
       now={now}
       areasById={areasById}
       blocks={blocksByDate.get(date) ?? []}
+      onAddRoutine={setRoutineDate}
       onDelete={(blockId) => {
         const block = schedule.blocks.find((candidate) => candidate.id === blockId)
         if (block) {
@@ -235,6 +238,17 @@ export function Agenda() {
         block={blockToComplete}
         onClose={() => setBlockToComplete(null)}
         onComplete={handleComplete}
+      />
+      <RoutineModal
+        date={routineDate}
+        onClose={() => setRoutineDate(null)}
+        onSave={async (input) => {
+          const result = await schedule.createRoutineBlock(input)
+          if (result.ok) {
+            toast.success(`Rutina “${result.data.title}” agregada a la agenda.`)
+          }
+          return result
+        }}
       />
       <Modal
         open={blockToDelete !== null}

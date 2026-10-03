@@ -1,5 +1,5 @@
 import clsx from 'clsx'
-import { Clock3 } from 'lucide-react'
+import { Clock3, Sparkles } from 'lucide-react'
 import { useDroppable } from '@dnd-kit/core'
 import type { Area, LocalDateString, ScheduleBlock } from '../../types/domain.ts'
 import { addDays, formatDateShort, parseLocalDate, toLocalDateString } from '../../lib/time.ts'
@@ -13,12 +13,23 @@ interface DayDrawerProps {
   areasById: ReadonlyMap<string, Area>
   now: Date
   isToday: boolean
+  onAddRoutine: (date: LocalDateString) => void
   onDelete: (blockId: string) => void
   onOpen: (block: ScheduleBlock) => void
   onToggleComplete: (block: ScheduleBlock) => void
 }
 
-export function DayDrawer({ date, blocks, areasById, now, isToday, onDelete, onOpen, onToggleComplete }: DayDrawerProps) {
+export function DayDrawer({
+  date,
+  blocks,
+  areasById,
+  now,
+  isToday,
+  onAddRoutine,
+  onDelete,
+  onOpen,
+  onToggleComplete,
+}: DayDrawerProps) {
   const { isOver, setNodeRef } = useDroppable({
     id: `day:${date}`,
     data: { type: 'day-timeline', date },
@@ -52,11 +63,21 @@ export function DayDrawer({ date, blocks, areasById, now, isToday, onDelete, onO
           </div>
           <p className="truncate text-xs capitalize text-ink-muted">{dateLabel} · {timedCount} con hora</p>
         </div>
-        {isToday ? (
-          <IconButton label="Saltar a la hora actual" size="sm" variant="glass" onClick={jumpToNow}>
-            <Clock3 />
+        <div className="flex shrink-0 items-center gap-1">
+          <IconButton
+            label={`Agregar rutina a ${dayTitle}`}
+            size="sm"
+            variant="glass"
+            onClick={() => onAddRoutine(date)}
+          >
+            <Sparkles className="size-4 text-accent" />
           </IconButton>
-        ) : null}
+          {isToday ? (
+            <IconButton label="Saltar a la hora actual" size="sm" variant="glass" onClick={jumpToNow}>
+              <Clock3 />
+            </IconButton>
+          ) : null}
+        </div>
       </header>
 
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">

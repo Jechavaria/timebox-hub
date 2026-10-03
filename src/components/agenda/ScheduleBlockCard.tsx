@@ -1,7 +1,7 @@
 import { memo } from 'react'
 import type { CSSProperties } from 'react'
 import clsx from 'clsx'
-import { Check, GripVertical, Trash2, Undo2 } from 'lucide-react'
+import { Check, GripVertical, Sparkles, Trash2, Undo2 } from 'lucide-react'
 import { useDraggable } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
 import { MIN_BLOCK_PX, PX_PER_MINUTE } from '../../lib/constants.ts'
@@ -64,6 +64,9 @@ function ScheduleBlockCardComponent({ block, area, onDelete, onOpen, onToggleCom
         aria-label={`Editar bloque ${block.title}`}
         className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden text-left"
       >
+        {block.is_routine ? (
+          <Sparkles aria-label="Rutina cotidiana" className="size-3 shrink-0 text-accent" />
+        ) : null}
         <span className="min-w-0 flex-1 truncate text-xs font-semibold text-ink">{block.title}</span>
         {(untimed || height >= 54) ? (
           <span className="shrink-0 text-[10px] tabular-nums text-ink-muted">
