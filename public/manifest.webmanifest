@@ -1,0 +1,26 @@
+{
+  "name": "TimeBox Hub — Gestor Háptico de Tiempo y Tareas",
+  "short_name": "TimeBox Hub",
+  "description": "Gestor háptico de tiempo y tareas basado en la metodología Timeboxing con sincronización en tiempo real.",
+  "start_url": "/",
+  "id": "/",
+  "display": "standalone",
+  "background_color": "#06080c",
+  "theme_color": "#06080c",
+  "orientation": "any",
+  "categories": ["productivity", "utilities"],
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/favicon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}
