@@ -92,7 +92,8 @@ export function TaskBlock({ task, area, onUpdate, onDelete }: TaskBlockProps) {
           ref={setActivatorNodeRef}
           label={`Arrastrar ${task.title} para cambiar su prioridad`}
           size="sm"
-          className="size-9 cursor-grab touch-none active:cursor-grabbing"
+          className="size-9 cursor-grab touch-none active:cursor-grabbing select-none"
+          style={{ touchAction: 'none', WebkitUserSelect: 'none', userSelect: 'none' }}
           {...attributes}
           {...listeners}
         >

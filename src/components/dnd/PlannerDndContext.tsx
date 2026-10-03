@@ -5,22 +5,16 @@ import {
   DndContext,
   DragOverlay,
   KeyboardSensor,
-  MouseSensor,
+  PointerSensor,
   pointerWithin,
   rectIntersection,
-  TouchSensor,
   useSensor,
   useSensors,
 } from '@dnd-kit/core'
 import type { ReactNode } from 'react'
 import { arrayMove } from '@dnd-kit/sortable'
 import { Clock3, GripVertical, LayoutGrid } from 'lucide-react'
-import {
-  MOUSE_DRAG_DISTANCE_PX,
-  PX_PER_MINUTE,
-  TOUCH_DRAG_DELAY_MS,
-  TOUCH_DRAG_TOLERANCE_PX,
-} from '../../lib/constants.ts'
+import { PX_PER_MINUTE } from '../../lib/constants.ts'
 import { clamp, minutesToHM, snapMinutes } from '../../lib/time.ts'
 import { usePlanner } from '../../hooks/usePlanner.ts'
 import { useToast } from '../../hooks/useToast.ts'
@@ -121,9 +115,8 @@ export function PlannerDndContext({ children }: PlannerDndContextProps) {
   const [activeData, setActiveData] = useState<DndData | null>(null)
   const [previewLabel, setPreviewLabel] = useState<string | null>(null)
   const sensors = useSensors(
-    useSensor(MouseSensor, { activationConstraint: { distance: MOUSE_DRAG_DISTANCE_PX } }),
-    useSensor(TouchSensor, {
-      activationConstraint: { delay: TOUCH_DRAG_DELAY_MS, tolerance: TOUCH_DRAG_TOLERANCE_PX },
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 4 },
     }),
     useSensor(KeyboardSensor),
   )
@@ -255,9 +248,9 @@ export function PlannerDndContext({ children }: PlannerDndContextProps) {
       sensors={sensors}
       collisionDetection={plannerCollision}
       autoScroll={{
-        threshold: { x: 0.04, y: 0.07 },
-        acceleration: 3,
-        interval: 12,
+        threshold: { x: 0.03, y: 0.05 },
+        acceleration: 1.5,
+        interval: 16,
       }}
       onDragStart={handleDragStart}
       onDragMove={handleDragMove}

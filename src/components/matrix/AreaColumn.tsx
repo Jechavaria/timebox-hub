@@ -75,7 +75,8 @@ export function AreaColumn({ area, tasks, areaActions, taskActions }: AreaColumn
             ref={setActivatorNodeRef}
             label={`Reordenar ámbito ${area.name}`}
             size="sm"
-            className="size-9 cursor-grab touch-manipulation active:cursor-grabbing"
+            className="size-9 cursor-grab active:cursor-grabbing select-none"
+            style={{ touchAction: 'none', WebkitUserSelect: 'none', userSelect: 'none' }}
             {...attributes}
             {...listeners}
           >

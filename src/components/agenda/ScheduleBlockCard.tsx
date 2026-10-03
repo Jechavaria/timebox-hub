@@ -118,7 +118,8 @@ function ScheduleBlockCardComponent({
         ref={setActivatorNodeRef}
         label={`Mover ${block.title}`}
         size="sm"
-        className="size-8 shrink-0 cursor-grab touch-none active:cursor-grabbing"
+        className="size-8 shrink-0 cursor-grab touch-none active:cursor-grabbing select-none"
+        style={{ touchAction: 'none', WebkitUserSelect: 'none', userSelect: 'none' }}
         {...attributes}
         {...listeners}
       >
