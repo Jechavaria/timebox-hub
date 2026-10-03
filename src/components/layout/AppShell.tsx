@@ -10,7 +10,7 @@ export function AppShell() {
       <div className="app-frame flex h-dvh flex-col gap-3 overflow-hidden sm:gap-4">
         <Navbar />
         <PlannerDndContext>
-          <main className="grid min-h-0 flex-1 grid-rows-[minmax(0,2fr)_minmax(0,3fr)] gap-3 sm:gap-4">
+          <main className="flex min-h-0 flex-1 flex-col gap-3 sm:gap-4 overflow-hidden">
             <Matrix />
             <Agenda />
           </main>

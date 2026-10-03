@@ -81,12 +81,25 @@ export function minutesToTime(totalMinutes: number): TimeOfDayString {
   return `${pad2(Math.floor(totalMinutes / 60))}:${pad2(totalMinutes % 60)}:00`
 }
 
-/** Devuelve HH:MM para mostrar en pantalla; 1440 se muestra como 24:00 (fin de día). */
+/** Devuelve hora en formato 12h (ej. "1:30 PM", "12:00 AM") para mostrar en pantalla. */
 export function minutesToHM(totalMinutes: number): string {
   if (!Number.isInteger(totalMinutes) || totalMinutes < 0 || totalMinutes > MINUTES_PER_DAY) {
     throw new RangeError(`Minutos fuera del día: ${totalMinutes}`)
   }
-  return `${pad2(Math.floor(totalMinutes / 60))}:${pad2(totalMinutes % 60)}`
+  const totalHours = Math.floor(totalMinutes / 60)
+  const normalizedHours = totalHours % 24
+  const hours12 = normalizedHours % 12 === 0 ? 12 : normalizedHours % 12
+  const minutes = pad2(totalMinutes % 60)
+  const ampm = normalizedHours >= 12 ? 'PM' : 'AM'
+  return `${hours12}:${minutes} ${ampm}`
+}
+
+/** Formatea una hora entera (0 a 23) en formato 12h (ej. "12:00 AM", "1:00 PM"). */
+export function formatHour12(hour: number): string {
+  const normalized = hour % 24
+  const hours12 = normalized % 12 === 0 ? 12 : normalized % 12
+  const ampm = normalized >= 12 ? 'PM' : 'AM'
+  return `${hours12}:00 ${ampm}`
 }
 
 /** Minutos transcurridos desde la medianoche local, con fracción por los segundos. */
@@ -129,7 +142,11 @@ export function formatDuration(totalMinutes: number): string {
 }
 
 export function formatClockTime(date: Date): string {
-  return `${pad2(date.getHours())}:${pad2(date.getMinutes())}`
+  const rawHours = date.getHours()
+  const hours12 = rawHours % 12 === 0 ? 12 : rawHours % 12
+  const minutes = pad2(date.getMinutes())
+  const ampm = rawHours >= 12 ? 'PM' : 'AM'
+  return `${hours12}:${minutes} ${ampm}`
 }
 
 export function formatDateShort(date: Date): string {

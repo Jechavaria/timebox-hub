@@ -94,11 +94,17 @@ export function AnalyticsModal({ open, onClose }: AnalyticsModalProps) {
 
   // 3. Cálculo de horas pico de actividad (distribución por horas del día 06:00 a 23:00)
   const hourlyActivity = useMemo(() => {
-    const hours = Array.from({ length: 18 }, (_, i) => ({
-      hour: i + 6,
-      label: `${String(i + 6).padStart(2, '0')}:00`,
-      minutes: 0,
-    }))
+    const hours = Array.from({ length: 18 }, (_, i) => {
+      const h = i + 6
+      const h12 = h % 12 === 0 ? 12 : h % 12
+      const ampm = h >= 12 ? 'PM' : 'AM'
+      return {
+        hour: h,
+        label: `${h12}:00 ${ampm}`,
+        shortLabel: `${h12}${ampm.toLowerCase()}`,
+        minutes: 0,
+      }
+    })
 
     for (const b of filteredBlocks) {
       if (!b.start_time) continue
@@ -354,7 +360,7 @@ export function AnalyticsModal({ open, onClose }: AnalyticsModalProps) {
           </div>
 
           <p className="mb-3 text-xs text-ink-muted">
-            Densidad de minutos programados por hora (de 06:00 a 23:00):
+            Densidad de minutos programados por hora (de 6:00 AM a 11:00 PM):
           </p>
 
           <div className="flex h-20 items-end gap-1 overflow-x-auto pt-2">
@@ -379,7 +385,7 @@ export function AnalyticsModal({ open, onClose }: AnalyticsModalProps) {
                     />
                   </div>
                   <span className="text-[9px] tabular-nums text-ink-faint">
-                    {h.hour}
+                    {h.shortLabel}
                   </span>
                 </div>
               )
@@ -397,7 +403,7 @@ export function AnalyticsModal({ open, onClose }: AnalyticsModalProps) {
               </h3>
             </div>
             <span className="text-xs text-ink-muted">
-              Ventanas de 08:00 a 22:00
+              Ventanas de 8:00 AM a 10:00 PM
             </span>
           </div>
 

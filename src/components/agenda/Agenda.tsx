@@ -62,7 +62,7 @@ export function Agenda() {
       setDeleteError(result.message)
       return
     }
-    toast.success('El bloque se quitó de la agenda. La tarea maestra permanece en El Ábaco.')
+    toast.success('El bloque se quitó de la agenda. La tarea maestra permanece en la Vista General de Tareas.')
     setBlockToDelete(null)
     setDeleteError(null)
   }
@@ -147,7 +147,7 @@ export function Agenda() {
           </span>
           <div className="min-w-0">
             <h2 id="agenda-heading" className="truncate text-sm font-semibold tracking-tight text-ink sm:text-base">
-              Agenda
+              Planificación Diaria
             </h2>
             <p className="truncate text-xs text-ink-muted">
               {view === 'today-tomorrow' ? 'Enfoque inmediato: Hoy y Mañana' : 'Vista proyectada de 7 días'}
@@ -254,7 +254,7 @@ export function Agenda() {
         open={blockToDelete !== null}
         onClose={() => { if (!savingDelete) setBlockToDelete(null) }}
         title="Quitar bloque de la agenda"
-        description={blockToDelete ? `“${blockToDelete.title}” se quitará de este día. La tarea maestra permanecerá en El Ábaco.` : undefined}
+        description={blockToDelete ? `“${blockToDelete.title}” se quitará de este día. La tarea maestra permanecerá en la Vista General de Tareas.` : undefined}
         footer={
           <div className="flex justify-end gap-2">
             <Button onClick={() => setBlockToDelete(null)} disabled={savingDelete}>Cancelar</Button>

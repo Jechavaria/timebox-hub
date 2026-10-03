@@ -66,7 +66,7 @@ export function AreaColumn({ area, tasks, areaActions, taskActions }: AreaColumn
         style={sortableStyle}
         aria-labelledby={headingId}
         className={clsx(
-          'glass-panel flex h-full w-[min(86vw,21rem)] shrink-0 snap-start flex-col overflow-hidden sm:w-[min(42vw,22rem)] lg:w-[22rem]',
+          'glass-panel flex h-full max-h-full min-h-0 w-[min(86vw,21rem)] shrink-0 snap-start flex-col overflow-hidden sm:w-[min(42vw,22rem)] lg:w-[22rem]',
           isDragging && 'ring-3 ring-accent/60',
         )}
       >

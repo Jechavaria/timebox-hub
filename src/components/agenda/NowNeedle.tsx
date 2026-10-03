@@ -19,7 +19,7 @@ export function NowNeedle({ date, now, visible }: NowNeedleProps) {
       style={style}
       className="pointer-events-none absolute inset-x-0 z-20 flex h-0 items-center"
     >
-      <span className="absolute -left-[3.3rem] -top-2 rounded-md bg-danger px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-white shadow-sm">
+      <span className="absolute -left-[4.2rem] -top-2 rounded-md bg-danger px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-white shadow-sm">
         {formatClockTime(now)}
       </span>
       <span className="h-0.5 w-full bg-danger shadow-[0_0_10px_rgb(255_123_123_/_0.45)]" />
