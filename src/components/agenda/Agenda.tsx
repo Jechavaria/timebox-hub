@@ -1,11 +1,11 @@
 import { useMemo, useState } from 'react'
 import { Calendar, CalendarDays, RotateCw, Trash2 } from 'lucide-react'
 import { AGENDA_WINDOW_DAYS } from '../../lib/constants.ts'
-import { getWeekDates, toLocalDateString } from '../../lib/time.ts'
+import { getWeekDates, minutesToTime, toLocalDateString } from '../../lib/time.ts'
 import { useNow } from '../../hooks/useNow.ts'
 import { usePlanner } from '../../hooks/usePlanner.ts'
 import { useToast } from '../../hooks/useToast.ts'
-import type { MutationResult, ScheduleBlock } from '../../types/domain.ts'
+import type { LocalDateString, MutationResult, ScheduleBlock } from '../../types/domain.ts'
 import { Button } from '../ui/Button.tsx'
 import { GlassPanel } from '../ui/GlassPanel.tsx'
 import { IconButton } from '../ui/IconButton.tsx'
@@ -17,6 +17,7 @@ import { RoutineModal } from '../task/RoutineModal.tsx'
 import { DayDrawer } from './DayDrawer.tsx'
 import { UpcomingDayCard } from './UpcomingDayCard.tsx'
 import { DayMaximizedModal } from './DayMaximizedModal.tsx'
+import { ScheduleSlotModal } from './ScheduleSlotModal.tsx'
 
 export function Agenda() {
   const { areas, tasks, schedule } = usePlanner()
@@ -26,6 +27,7 @@ export function Agenda() {
 
   const [routineDate, setRoutineDate] = useState<string | null>(null)
   const [maximizedDate, setMaximizedDate] = useState<string | null>(null)
+  const [slotToSchedule, setSlotToSchedule] = useState<{ date: LocalDateString; startMinutes: number | null } | null>(null)
   const [blockToEdit, setBlockToEdit] = useState<ScheduleBlock | null>(null)
   const [blockToComplete, setBlockToComplete] = useState<ScheduleBlock | null>(null)
   const [blockToDelete, setBlockToDelete] = useState<ScheduleBlock | null>(null)
@@ -172,6 +174,7 @@ export function Agenda() {
               onToggleComplete={(block) => { void handleToggleComplete(block) }}
               onResizeDuration={handleResizeDuration}
               onMaximize={setMaximizedDate}
+              onSlotClick={(date, minutes) => setSlotToSchedule({ date, startMinutes: minutes })}
             />
           </div>
 
@@ -195,6 +198,7 @@ export function Agenda() {
               onToggleComplete={(block) => { void handleToggleComplete(block) }}
               onResizeDuration={handleResizeDuration}
               onMaximize={setMaximizedDate}
+              onSlotClick={(date, minutes) => setSlotToSchedule({ date, startMinutes: minutes })}
             />
           </div>
 
@@ -230,6 +234,7 @@ export function Agenda() {
                   onOpen={setBlockToEdit}
                   onToggleComplete={(block) => { void handleToggleComplete(block) }}
                   onMaximize={setMaximizedDate}
+                  onSlotClick={(d, minutes) => setSlotToSchedule({ date: d, startMinutes: minutes })}
                 />
               ))}
             </div>
@@ -257,6 +262,55 @@ export function Agenda() {
         onOpen={setBlockToEdit}
         onToggleComplete={(block) => { void handleToggleComplete(block) }}
         onResizeDuration={handleResizeDuration}
+        onSlotClick={(date, minutes) => setSlotToSchedule({ date, startMinutes: minutes })}
+      />
+
+      <ScheduleSlotModal
+        open={slotToSchedule !== null}
+        date={slotToSchedule?.date ?? null}
+        startMinutes={slotToSchedule?.startMinutes ?? null}
+        tasks={tasks.tasks}
+        areas={areas.areas}
+        onClose={() => setSlotToSchedule(null)}
+        onSelectTask={async (task, date, startMinutes) => {
+          const result = await schedule.cloneTaskToBlock(task, date, startMinutes)
+          if (result.ok) {
+            toast.success(
+              startMinutes !== null
+                ? `“${task.title}” planificada para ${date}.`
+                : `“${task.title}” añadida a Sin hora.`,
+            )
+          } else {
+            toast.error(result.message, 'No se pudo planificar')
+          }
+        }}
+        onCreateNew={async (input) => {
+          if (input.saveToBacklog) {
+            const taskResult = await tasks.createTask({
+              title: input.title,
+              estimated_duration_minutes: input.duration,
+              area_id: input.areaId ?? areas.areas[0]?.id,
+            })
+            if (!taskResult.ok) return taskResult
+            const blockResult = await schedule.cloneTaskToBlock(taskResult.data, input.date, input.startMinutes)
+            if (blockResult.ok) {
+              toast.success(`“${input.title}” guardada y añadida a la agenda.`)
+            }
+            return blockResult
+          } else {
+            const routineResult = await schedule.createRoutineBlock({
+              title: input.title,
+              scheduledDate: input.date,
+              plannedDurationMinutes: input.duration,
+              startTime: input.startMinutes !== null ? minutesToTime(input.startMinutes) : null,
+              areaId: input.areaId,
+            })
+            if (routineResult.ok) {
+              toast.success(`Rutina “${input.title}” añadida a la agenda.`)
+            }
+            return routineResult
+          }
+        }}
       />
 
       <BlockModal

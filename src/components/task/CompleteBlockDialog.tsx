@@ -19,6 +19,8 @@ interface CompleteBlockDialogProps {
 
 export function CompleteBlockDialog({ block, onClose, onComplete }: CompleteBlockDialogProps) {
   const [actualDuration, setActualDuration] = useState(30)
+  const [startTimeInput, setStartTimeInput] = useState('')
+  const [endTimeInput, setEndTimeInput] = useState('')
   const [closeMasterTask, setCloseMasterTask] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
@@ -26,10 +28,46 @@ export function CompleteBlockDialog({ block, onClose, onComplete }: CompleteBloc
 
   useEffect(() => {
     if (!block) return
-    setActualDuration(block.actual_duration_minutes ?? block.planned_duration_minutes)
+    const initialDuration = block.actual_duration_minutes ?? block.planned_duration_minutes
+    setActualDuration(initialDuration)
+    const blockStart = block.start_time ? block.start_time.slice(0, 5) : ''
+    setStartTimeInput(blockStart)
+    setEndTimeInput('')
     setCloseMasterTask(false)
     setError(null)
-  }, [block?.id, block?.planned_duration_minutes, block?.actual_duration_minutes])
+  }, [block?.id, block?.planned_duration_minutes, block?.actual_duration_minutes, block?.start_time])
+
+  const calculateFromTimes = (startStr: string, endStr: string) => {
+    if (!startStr || !endStr) return
+    try {
+      const s = Number(startStr.slice(0, 2)) * 60 + Number(startStr.slice(3, 5))
+      const e = Number(endStr.slice(0, 2)) * 60 + Number(endStr.slice(3, 5))
+      let diff = e - s
+      if (diff <= 0) diff += 1440
+      if (diff > 0 && diff <= 1440) {
+        setActualDuration(diff)
+      }
+    } catch {
+      // Ignorar formato incompleto
+    }
+  }
+
+  const handleStartTimeChange = (val: string) => {
+    setStartTimeInput(val)
+    calculateFromTimes(val, endTimeInput)
+  }
+
+  const handleEndTimeChange = (val: string) => {
+    setEndTimeInput(val)
+    calculateFromTimes(startTimeInput, val)
+  }
+
+  const setEndTimeNow = () => {
+    const d = new Date()
+    const nowStr = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+    setEndTimeInput(nowStr)
+    calculateFromTimes(startTimeInput, nowStr)
+  }
 
   const discrepancy = actualDuration - (block?.planned_duration_minutes ?? 0)
   const discrepancyLabel = discrepancy === 0
@@ -97,6 +135,51 @@ export function CompleteBlockDialog({ block, onClose, onComplete }: CompleteBloc
               <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-ink-faint">min</span>
             </div>
           </div>
+        </div>
+
+        {/* Horarios opcionales de inicio y fin para calcular el tiempo automáticamente */}
+        <div className="flex flex-col gap-2 rounded-2xl border border-glass-border bg-glass p-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-ink">Calcular por horario (opcional)</span>
+            <button
+              type="button"
+              onClick={setEndTimeNow}
+              className="text-[11px] font-medium text-accent hover:underline cursor-pointer"
+            >
+              Terminé ahora
+            </button>
+          </div>
+          <div className="grid grid-cols-2 gap-2.5">
+            <div>
+              <label htmlFor={`${uid}-start-time`} className="text-[11px] text-ink-faint">
+                Hora que empecé
+              </label>
+              <input
+                id={`${uid}-start-time`}
+                type="time"
+                value={startTimeInput}
+                onChange={(e) => handleStartTimeChange(e.target.value)}
+                className="glass-input mt-1 text-sm tabular-nums"
+              />
+            </div>
+            <div>
+              <label htmlFor={`${uid}-end-time`} className="text-[11px] text-ink-faint">
+                Hora que terminé
+              </label>
+              <input
+                id={`${uid}-end-time`}
+                type="time"
+                value={endTimeInput}
+                onChange={(e) => handleEndTimeChange(e.target.value)}
+                className="glass-input mt-1 text-sm tabular-nums"
+              />
+            </div>
+          </div>
+          {startTimeInput && endTimeInput ? (
+            <p className="text-[11px] text-accent font-medium">
+              Calculado automáticamente: {formatDuration(actualDuration)}
+            </p>
+          ) : null}
         </div>
 
         <div

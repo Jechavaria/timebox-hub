@@ -19,6 +19,7 @@ interface TimelineBoardProps {
   onOpen: (block: ScheduleBlock) => void
   onToggleComplete: (block: ScheduleBlock) => void
   onResizeDuration?: (blockId: string, durationMinutes: number) => void
+  onSlotClick?: (date: string, minutes: number) => void
 }
 
 export function TimelineBoard({
@@ -32,16 +33,29 @@ export function TimelineBoard({
   onOpen,
   onToggleComplete,
   onResizeDuration,
+  onSlotClick,
 }: TimelineBoardProps) {
   const timedBlocks = blocks.filter((block) => block.start_time !== null)
 
+  const handleBoardClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (!onSlotClick) return
+    const target = event.target as HTMLElement
+    if (target.closest('article, button, [role="button"], [role="slider"], input, a')) return
+    const rect = event.currentTarget.getBoundingClientRect()
+    const offsetY = event.clientY - rect.top
+    const rawMinutes = offsetY / PX_PER_MINUTE
+    const snapped = Math.max(0, Math.min(1425, Math.round(rawMinutes / 15) * 15))
+    onSlotClick(date, snapped)
+  }
+
   return (
     <div className="grid grid-cols-[5rem_minmax(0,1fr)] items-start">
-      <HourGutter />
+      <HourGutter onHourClick={onSlotClick ? (hour) => onSlotClick(date, hour * 60) : undefined} />
       <div
         ref={boardRef}
         data-timeline-date={date}
-        className="relative isolate overflow-visible border-b border-glass-border/40"
+        onClick={handleBoardClick}
+        className="relative isolate overflow-visible border-b border-glass-border/40 cursor-pointer"
         style={{
           height: `${HOURS_PER_DAY * HOUR_HEIGHT_PX}px`,
           backgroundImage:

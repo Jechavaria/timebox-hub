@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import type { CollisionDetection, DragEndEvent, DragStartEvent } from '@dnd-kit/core'
+import type { CollisionDetection, DragEndEvent, DragMoveEvent, DragStartEvent } from '@dnd-kit/core'
 import {
   closestCenter,
   DndContext,
@@ -14,14 +14,14 @@ import {
 } from '@dnd-kit/core'
 import type { ReactNode } from 'react'
 import { arrayMove } from '@dnd-kit/sortable'
-import { GripVertical, LayoutGrid } from 'lucide-react'
+import { Clock3, GripVertical, LayoutGrid } from 'lucide-react'
 import {
   MOUSE_DRAG_DISTANCE_PX,
   PX_PER_MINUTE,
   TOUCH_DRAG_DELAY_MS,
   TOUCH_DRAG_TOLERANCE_PX,
 } from '../../lib/constants.ts'
-import { clamp, snapMinutes } from '../../lib/time.ts'
+import { clamp, minutesToHM, snapMinutes } from '../../lib/time.ts'
 import { usePlanner } from '../../hooks/usePlanner.ts'
 import { useToast } from '../../hooks/useToast.ts'
 import type {
@@ -94,22 +94,32 @@ function describeActive(data: DndData | null, titleById: ReadonlyMap<string, str
   return ''
 }
 
-function getDropStartMinutes(event: DragEndEvent, date: string, durationMinutes: number): number {
+type DragGeometryEvent = Pick<DragEndEvent, 'active' | 'delta'>
+
+/**
+ * Calcula la hora de inicio a partir de la posición real en pantalla de la tarjeta arrastrada.
+ * Usa el rectángulo trasladado (ya incluye el auto-scroll de los contenedores), así la hora
+ * coincide con lo que el usuario ve aunque la línea de tiempo se haya desplazado durante el arrastre.
+ */
+function getDropStartMinutes(event: DragGeometryEvent, date: string, durationMinutes: number): number {
   const board = Array.from(document.querySelectorAll<HTMLElement>('[data-timeline-date]')).find(
     (element) => element.dataset.timelineDate === date,
   )
+  const translatedTop = event.active.rect.current.translated?.top
   const initialTop = event.active.rect.current.initial?.top
-  if (!board || initialTop === undefined) return 9 * 60
+  const dropTop = translatedTop ?? (initialTop !== undefined ? initialTop + event.delta.y : undefined)
+  if (!board || dropTop === undefined) return 9 * 60
 
-  const dropTop = initialTop + event.delta.y
+  const safeDuration = Math.max(15, durationMinutes || 30)
   const rawMinutes = (dropTop - board.getBoundingClientRect().top) / PX_PER_MINUTE
-  return clamp(snapMinutes(rawMinutes), 0, Math.max(0, 1440 - durationMinutes))
+  return clamp(snapMinutes(rawMinutes), 0, Math.max(0, 1440 - safeDuration))
 }
 
 export function PlannerDndContext({ children }: PlannerDndContextProps) {
   const planner = usePlanner()
   const toast = useToast()
   const [activeData, setActiveData] = useState<DndData | null>(null)
+  const [previewLabel, setPreviewLabel] = useState<string | null>(null)
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: MOUSE_DRAG_DISTANCE_PX } }),
     useSensor(TouchSensor, {
@@ -128,10 +138,26 @@ export function PlannerDndContext({ children }: PlannerDndContextProps) {
 
   const handleDragStart = ({ active }: DragStartEvent) => {
     setActiveData(getData(active.data.current))
+    setPreviewLabel(null)
+  }
+
+  /** Muestra en la tarjeta flotante la hora exacta (o "Sin hora") donde quedará al soltar. */
+  const handleDragMove = (event: DragMoveEvent) => {
+    const source = getData(event.active.data.current)
+    const target = event.over ? getData(event.over.data.current) : null
+    let next: string | null = null
+    if (source && (source.type === 'master-task' || source.type === 'schedule-block') && target) {
+      if (target.type === 'day-untimed') next = 'Sin hora'
+      else if (target.type === 'day-timeline') {
+        next = minutesToHM(getDropStartMinutes(event, target.date, source.durationMinutes))
+      }
+    }
+    setPreviewLabel((current) => (current === next ? current : next))
   }
 
   const handleDragEnd = async (event: DragEndEvent) => {
     setActiveData(null)
+    setPreviewLabel(null)
     if (!event.over) return
     const source = getData(event.active.data.current)
     const target = getData(event.over.data.current)
@@ -228,16 +254,33 @@ export function PlannerDndContext({ children }: PlannerDndContextProps) {
     <DndContext
       sensors={sensors}
       collisionDetection={plannerCollision}
+      autoScroll={{
+        threshold: { x: 0.04, y: 0.07 },
+        acceleration: 3,
+        interval: 12,
+      }}
       onDragStart={handleDragStart}
-      onDragCancel={() => setActiveData(null)}
+      onDragMove={handleDragMove}
+      onDragCancel={() => {
+        setActiveData(null)
+        setPreviewLabel(null)
+      }}
       onDragEnd={(event) => { void handleDragEnd(event) }}
     >
       {children}
-      <DragOverlay>
+      <DragOverlay dropAnimation={null}>
         {activeData ? (
-          <div className="glass-popover flex max-w-[20rem] items-center gap-2 truncate px-3 py-2 text-sm font-semibold text-ink">
-            {activeIcon}
-            <span className="truncate">{activeLabel}</span>
+          <div className="glass-popover pointer-events-none z-50 flex w-64 max-w-[18rem] items-center justify-between gap-2 rounded-xl border border-accent/40 bg-surface/95 px-3 py-2 text-sm font-semibold text-ink shadow-2xl backdrop-blur-xl">
+            <div className="flex min-w-0 flex-1 items-center gap-2">
+              {activeIcon}
+              <span className="truncate">{activeLabel}</span>
+            </div>
+            {previewLabel ? (
+              <span className="flex shrink-0 items-center gap-1 rounded-md bg-accent/20 px-1.5 py-0.5 text-xs font-bold text-accent tabular-nums">
+                <Clock3 className="size-3" />
+                {previewLabel}
+              </span>
+            ) : null}
           </div>
         ) : null}
       </DragOverlay>

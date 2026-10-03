@@ -1,5 +1,5 @@
 import clsx from 'clsx'
-import { Check, Clock, Maximize2, Pencil, Sparkles, Trash2, Undo2 } from 'lucide-react'
+import { CalendarPlus, Check, Clock, Maximize2, Pencil, Sparkles, Trash2, Undo2 } from 'lucide-react'
 import { useDroppable } from '@dnd-kit/core'
 import type { Area, LocalDateString, ScheduleBlock } from '../../types/domain.ts'
 import { formatDateShort, formatDuration, minutesToHM, parseLocalDate, timeToMinutes } from '../../lib/time.ts'
@@ -15,6 +15,7 @@ interface UpcomingDayCardProps {
   onOpen: (block: ScheduleBlock) => void
   onToggleComplete: (block: ScheduleBlock) => void
   onMaximize: (date: LocalDateString) => void
+  onSlotClick?: (date: LocalDateString, minutes: number | null) => void
 }
 
 export function UpcomingDayCard({
@@ -26,6 +27,7 @@ export function UpcomingDayCard({
   onOpen,
   onToggleComplete,
   onMaximize,
+  onSlotClick,
 }: UpcomingDayCardProps) {
   const { isOver, setNodeRef } = useDroppable({
     id: `upcoming:${date}`,
@@ -71,6 +73,16 @@ export function UpcomingDayCard({
         </button>
 
         <div className="flex shrink-0 items-center gap-1">
+          {onSlotClick ? (
+            <IconButton
+              label={`Planificar tarea en ${dateLabel}`}
+              size="sm"
+              variant="glass"
+              onClick={() => onSlotClick(date, null)}
+            >
+              <CalendarPlus className="size-4 text-accent" />
+            </IconButton>
+          ) : null}
           <IconButton
             label={`Agregar rutina a ${dateLabel}`}
             size="sm"
@@ -101,13 +113,22 @@ export function UpcomingDayCard({
             return (
               <div
                 key={block.id}
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    const target = e.target as HTMLElement
+                    if (target.closest('button, [role="button"], input, a')) return
+                    e.preventDefault()
+                    onOpen(block)
+                  }
+                }}
                 onClick={(e) => {
                   const target = e.target as HTMLElement
                   if (target.closest('button, [role="button"], input, a')) return
                   onOpen(block)
                 }}
                 className={clsx(
-                  'glass-block flex cursor-pointer items-center gap-1.5 px-2 py-1.5 transition-all',
+                  'glass-block flex cursor-pointer items-center gap-1.5 px-2 py-1.5 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent',
                   block.is_completed && 'opacity-60',
                 )}
                 style={{ '--area-color': areaColor } as React.CSSProperties}
@@ -117,10 +138,8 @@ export function UpcomingDayCard({
                   className="size-2 shrink-0 rounded-full"
                   style={{ backgroundColor: areaColor }}
                 />
-                <button
-                  type="button"
-                  onClick={() => onOpen(block)}
-                  className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                <div
+                  className="flex min-w-0 flex-1 items-center gap-2 text-left select-none"
                   title={block.title}
                 >
                   <span className={clsx('min-w-0 flex-1 truncate text-xs font-medium text-ink', block.is_completed && 'line-through text-ink-muted')}>
@@ -129,7 +148,7 @@ export function UpcomingDayCard({
                   <span className="shrink-0 rounded-md bg-canvas/40 px-1.5 py-0.5 text-[10px] tabular-nums text-ink-muted border border-glass-border">
                     {startMinutes !== null ? minutesToHM(startMinutes) : formatDuration(block.planned_duration_minutes)}
                   </span>
-                </button>
+                </div>
 
                 <IconButton
                   label={block.is_completed ? `Reabrir ${block.title}` : `Completar ${block.title}`}
@@ -160,11 +179,15 @@ export function UpcomingDayCard({
             )
           })
         ) : (
-          <div className="grid min-h-36 flex-1 place-items-center rounded-2xl border border-dashed border-glass-border/60 p-4 text-center">
+          <button
+            type="button"
+            onClick={onSlotClick ? () => onSlotClick(date, null) : undefined}
+            className="grid min-h-36 flex-1 place-items-center rounded-2xl border border-dashed border-glass-border/60 p-4 text-center hover:border-accent hover:text-accent transition-colors cursor-pointer"
+          >
             <p className="text-xs text-ink-muted">
-              {isOver ? 'Suelta aquí para planificar' : 'Sin pendientes asignados. Arrastra una tarea aquí.'}
+              {isOver ? 'Suelta aquí para planificar' : '+ Añadir o arrastrar una tarea aquí'}
             </p>
-          </div>
+          </button>
         )}
       </div>
 

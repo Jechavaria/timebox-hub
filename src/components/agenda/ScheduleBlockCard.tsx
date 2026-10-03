@@ -42,7 +42,7 @@ function ScheduleBlockCardComponent({
   const style = {
     '--area-color': area?.color ?? '#8a909c',
     ...(untimed ? {} : { top: `${startMinutes}px`, height: `${height}px` }),
-    transform: CSS.Transform.toString(transform),
+    transform: isDragging ? undefined : CSS.Transform.toString(transform),
     opacity: isDragging ? 0.35 : block.is_completed ? 0.58 : undefined,
     zIndex: isDragging ? 30 : isResizing ? 40 : undefined,
   } as CSSProperties
@@ -83,6 +83,16 @@ function ScheduleBlockCardComponent({
     <article
       ref={setNodeRef}
       style={style}
+      tabIndex={0}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          if (isResizing) return
+          const target = event.target as HTMLElement
+          if (target.closest('button, [role="button"], [role="slider"], input, a')) return
+          event.preventDefault()
+          onOpen(block)
+        }
+      }}
       onClick={(event) => {
         if (isResizing) return
         const target = event.target as HTMLElement
@@ -91,7 +101,7 @@ function ScheduleBlockCardComponent({
       }}
       aria-label={`${block.title}, ${formatDuration(block.planned_duration_minutes)}${block.start_time ? `, ${minutesToHM(startMinutes)}` : ', sin hora'}${muted ? `, ámbito oculto: ${area?.name}` : ''}`}
       className={clsx(
-        'glass-block flex min-w-0 cursor-pointer items-center gap-1 overflow-hidden px-1.5 py-1 transition-all',
+        'glass-block flex min-w-0 cursor-pointer items-center gap-1 overflow-hidden px-1.5 py-1 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent',
         untimed ? 'min-h-11 w-full' : 'absolute inset-x-0',
         muted && 'glass-muted',
         block.is_completed && 'opacity-60',
@@ -104,33 +114,30 @@ function ScheduleBlockCardComponent({
         ref={setActivatorNodeRef}
         label={`Mover ${block.title}`}
         size="sm"
-        className="size-8 shrink-0 cursor-grab touch-manipulation active:cursor-grabbing"
+        className="size-8 shrink-0 cursor-grab touch-none active:cursor-grabbing"
         {...attributes}
         {...listeners}
       >
         <GripVertical />
       </IconButton>
-      <button
-        type="button"
-        onClick={() => onOpen(block)}
-        aria-label={`Editar bloque ${block.title}`}
+      <div
         className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden text-left"
       >
         {block.is_routine ? (
           <Sparkles aria-label="Rutina cotidiana" className="size-3 shrink-0 text-accent" />
         ) : null}
-        <span className="min-w-0 flex-1 truncate text-xs font-semibold text-ink">{block.title}</span>
+        <span className="min-w-0 flex-1 truncate text-xs font-semibold text-ink select-none">{block.title}</span>
         {(untimed || height >= 54) ? (
-          <span className="shrink-0 text-[10px] tabular-nums text-ink-muted">
+          <span className="shrink-0 text-[10px] tabular-nums text-ink-muted select-none">
             {block.start_time ? minutesToHM(startMinutes) : formatDuration(effectiveDuration)}
           </span>
         ) : null}
         {height >= 82 ? (
-          <span className="shrink-0 text-[10px] tabular-nums text-ink-muted">
+          <span className="shrink-0 text-[10px] tabular-nums text-ink-muted select-none">
             {formatDuration(effectiveDuration)}
           </span>
         ) : null}
-      </button>
+      </div>
       <IconButton
         label={block.is_completed ? `Reabrir ${block.title}` : `Completar ${block.title}`}
         size="sm"

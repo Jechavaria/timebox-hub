@@ -161,8 +161,8 @@ export function useTasks(): UseTasksResult {
       if (!cleanTitle || cleanTitle.length > 120) {
         return { ok: false, message: 'El título debe tener entre 1 y 120 caracteres.' }
       }
-      if (!Number.isInteger(estimated_duration_minutes) || estimated_duration_minutes < 1 || estimated_duration_minutes > 1440) {
-        return { ok: false, message: 'La duración debe estar entre 1 y 1440 minutos.' }
+      if (!Number.isInteger(estimated_duration_minutes) || estimated_duration_minutes < 0 || estimated_duration_minutes > 1440) {
+        return { ok: false, message: 'La duración debe estar entre 0 y 1440 minutos.' }
       }
 
       const id = createUuid()
@@ -223,10 +223,10 @@ export function useTasks(): UseTasksResult {
       if (
         cleanChanges.estimated_duration_minutes !== undefined &&
         (!Number.isInteger(cleanChanges.estimated_duration_minutes) ||
-          cleanChanges.estimated_duration_minutes < 1 ||
+          cleanChanges.estimated_duration_minutes < 0 ||
           cleanChanges.estimated_duration_minutes > 1440)
       ) {
-        return { ok: false, message: 'La duración debe estar entre 1 y 1440 minutos.' }
+        return { ok: false, message: 'La duración debe estar entre 0 y 1440 minutos.' }
       }
 
       const optimistic = { ...previous, ...cleanChanges }

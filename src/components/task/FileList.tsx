@@ -82,7 +82,7 @@ export function FileList({
             return (
               <li
                 key={file.id}
-                className="flex min-h-14 items-center gap-2 rounded-xl border border-glass-border bg-glass px-2.5 py-2"
+                className="flex flex-col gap-2 rounded-xl border border-glass-border bg-glass p-2.5 transition-colors hover:border-glass-border/80"
               >
                 <input
                   ref={(element) => {
@@ -103,52 +103,61 @@ export function FileList({
                     })
                   }}
                 />
-                <FileKindIcon file={file} />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-ink" title={file.file_name}>{file.file_name}</p>
-                  <p className="text-xs tabular-nums text-ink-faint">
-                    {formatBytes(file.file_size)} · {new Intl.DateTimeFormat('es', { dateStyle: 'medium' }).format(new Date(file.uploaded_at))}
+                <div className="flex items-start gap-2.5">
+                  <FileKindIcon file={file} />
+                  <p
+                    className="min-w-0 flex-1 break-words text-sm font-medium leading-snug text-ink select-text"
+                    title={file.file_name}
+                  >
+                    {file.file_name}
                   </p>
                 </div>
-                {onPreview ? (
-                  <IconButton
-                    label={`Vista previa de ${file.file_name}`}
-                    size="sm"
-                    disabled={isDownloading || isDeleting || isReplacing}
-                    onClick={() => onPreview(file)}
-                    className="size-9 text-accent"
-                  >
-                    <Eye />
-                  </IconButton>
-                ) : null}
-                <IconButton
-                  label={`Descargar ${file.file_name}`}
-                  size="sm"
-                  disabled={isDownloading || isDeleting || isReplacing}
-                  onClick={() => { void onDownload(file) }}
-                  className={clsx('size-9', isDownloading && 'animate-pulse')}
-                >
-                  {isDownloading ? <LoaderCircle className="animate-spin" /> : <Download />}
-                </IconButton>
-                <IconButton
-                  label={`Reemplazar ${file.file_name}`}
-                  size="sm"
-                  disabled={isReplacing || isDeleting || isDownloading}
-                  onClick={() => inputRefs.current.get(file.id)?.click()}
-                  className={clsx('size-9', isReplacing && 'animate-pulse')}
-                >
-                  {isReplacing ? <LoaderCircle className="animate-spin" /> : <RefreshCw />}
-                </IconButton>
-                <IconButton
-                  label={`Eliminar ${file.file_name}`}
-                  size="sm"
-                  variant="danger"
-                  disabled={isDeleting || isDownloading || isReplacing}
-                  onClick={() => { setFileToDelete(file); setDeleteMessage(null) }}
-                  className="size-9"
-                >
-                  {isDeleting ? <LoaderCircle className="animate-spin" /> : <Trash2 />}
-                </IconButton>
+                <div className="flex items-center justify-between gap-2 border-t border-glass-border/40 pt-1.5">
+                  <span className="text-[11px] tabular-nums text-ink-faint">
+                    {formatBytes(file.file_size)} · {new Intl.DateTimeFormat('es', { dateStyle: 'medium' }).format(new Date(file.uploaded_at))}
+                  </span>
+                  <div className="flex shrink-0 items-center gap-1">
+                    {onPreview ? (
+                      <IconButton
+                        label={`Vista previa de ${file.file_name}`}
+                        size="sm"
+                        disabled={isDownloading || isDeleting || isReplacing}
+                        onClick={() => onPreview(file)}
+                        className="size-8 text-accent hover:bg-accent/20"
+                      >
+                        <Eye className="size-4" />
+                      </IconButton>
+                    ) : null}
+                    <IconButton
+                      label={`Descargar ${file.file_name}`}
+                      size="sm"
+                      disabled={isDownloading || isDeleting || isReplacing}
+                      onClick={() => { void onDownload(file) }}
+                      className={clsx('size-8', isDownloading && 'animate-pulse')}
+                    >
+                      {isDownloading ? <LoaderCircle className="size-4 animate-spin" /> : <Download className="size-4" />}
+                    </IconButton>
+                    <IconButton
+                      label={`Reemplazar ${file.file_name}`}
+                      size="sm"
+                      disabled={isReplacing || isDeleting || isDownloading}
+                      onClick={() => inputRefs.current.get(file.id)?.click()}
+                      className={clsx('size-8', isReplacing && 'animate-pulse')}
+                    >
+                      {isReplacing ? <LoaderCircle className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
+                    </IconButton>
+                    <IconButton
+                      label={`Eliminar ${file.file_name}`}
+                      size="sm"
+                      variant="danger"
+                      disabled={isDeleting || isDownloading || isReplacing}
+                      onClick={() => { setFileToDelete(file); setDeleteMessage(null) }}
+                      className="size-8"
+                    >
+                      {isDeleting ? <LoaderCircle className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
+                    </IconButton>
+                  </div>
+                </div>
               </li>
             )
           })}

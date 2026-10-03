@@ -1,5 +1,5 @@
 import clsx from 'clsx'
-import { Clock3, Maximize2, Sparkles } from 'lucide-react'
+import { CalendarPlus, Clock3, Maximize2, Sparkles } from 'lucide-react'
 import { useDroppable } from '@dnd-kit/core'
 import type { Area, LocalDateString, ScheduleBlock } from '../../types/domain.ts'
 import { addDays, formatDateShort, parseLocalDate, toLocalDateString } from '../../lib/time.ts'
@@ -19,6 +19,7 @@ interface DayDrawerProps {
   onToggleComplete: (block: ScheduleBlock) => void
   onResizeDuration?: (blockId: string, durationMinutes: number) => void
   onMaximize?: (date: LocalDateString) => void
+  onSlotClick?: (date: LocalDateString, minutes: number | null) => void
 }
 
 export function DayDrawer({
@@ -33,6 +34,7 @@ export function DayDrawer({
   onToggleComplete,
   onResizeDuration,
   onMaximize,
+  onSlotClick,
 }: DayDrawerProps) {
   const { isOver, setNodeRef } = useDroppable({
     id: `day:${date}`,
@@ -91,6 +93,16 @@ export function DayDrawer({
               <Maximize2 className="size-4" />
             </IconButton>
           ) : null}
+          {onSlotClick ? (
+            <IconButton
+              label={`Planificar tarea en ${dayTitle}`}
+              size="sm"
+              variant="glass"
+              onClick={() => onSlotClick(date, null)}
+            >
+              <CalendarPlus className="size-4 text-accent" />
+            </IconButton>
+          ) : null}
           <IconButton
             label={`Agregar rutina a ${dayTitle}`}
             size="sm"
@@ -120,6 +132,7 @@ export function DayDrawer({
           onOpen={onOpen}
           onToggleComplete={onToggleComplete}
           onResizeDuration={onResizeDuration}
+          onSlotClick={onSlotClick}
         />
       </div>
       <UntimedTray
@@ -129,6 +142,7 @@ export function DayDrawer({
         onDelete={onDelete}
         onOpen={onOpen}
         onToggleComplete={onToggleComplete}
+        onSlotClick={onSlotClick}
       />
     </section>
   )

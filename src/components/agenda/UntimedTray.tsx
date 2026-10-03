@@ -1,5 +1,5 @@
 import clsx from 'clsx'
-import { Inbox } from 'lucide-react'
+import { Inbox, Plus } from 'lucide-react'
 import { useDroppable } from '@dnd-kit/core'
 import type { Area, LocalDateString, ScheduleBlock } from '../../types/domain.ts'
 import { ScheduleBlockCard } from './ScheduleBlockCard.tsx'
@@ -11,9 +11,18 @@ interface UntimedTrayProps {
   onDelete: (blockId: string) => void
   onOpen: (block: ScheduleBlock) => void
   onToggleComplete: (block: ScheduleBlock) => void
+  onSlotClick?: (date: LocalDateString, minutes: number | null) => void
 }
 
-export function UntimedTray({ date, blocks, areasById, onDelete, onOpen, onToggleComplete }: UntimedTrayProps) {
+export function UntimedTray({
+  date,
+  blocks,
+  areasById,
+  onDelete,
+  onOpen,
+  onToggleComplete,
+  onSlotClick,
+}: UntimedTrayProps) {
   const { isOver, setNodeRef } = useDroppable({
     id: `untimed:${date}`,
     data: { type: 'day-untimed', date },
@@ -28,10 +37,22 @@ export function UntimedTray({ date, blocks, areasById, onDelete, onOpen, onToggl
         isOver ? 'bg-accent-soft' : 'bg-canvas/20',
       )}
     >
-      <div className="flex items-center gap-2 text-xs font-medium text-ink-muted">
-        <Inbox aria-hidden="true" className="size-4" />
-        <span>Sin hora</span>
-        <span className="ml-auto tabular-nums text-ink-faint">{blocks.length}</span>
+      <div className="flex items-center justify-between text-xs font-medium text-ink-muted">
+        <div className="flex items-center gap-1.5">
+          <Inbox aria-hidden="true" className="size-4" />
+          <span>Sin hora</span>
+          <span className="tabular-nums text-ink-faint">({blocks.length})</span>
+        </div>
+        {onSlotClick ? (
+          <button
+            type="button"
+            onClick={() => onSlotClick(date, null)}
+            className="flex items-center gap-1 text-[11px] font-semibold text-accent hover:underline cursor-pointer"
+          >
+            <Plus className="size-3" />
+            Añadir tarea
+          </button>
+        ) : null}
       </div>
       {blocks.length > 0 ? (
         <div className="flex flex-col gap-1.5">
@@ -48,7 +69,13 @@ export function UntimedTray({ date, blocks, areasById, onDelete, onOpen, onToggl
           ))}
         </div>
       ) : (
-        <p className="text-xs text-ink-faint">Suelta aquí una tarea o un bloque sin horario.</p>
+        <button
+          type="button"
+          onClick={onSlotClick ? () => onSlotClick(date, null) : undefined}
+          className="w-full rounded-lg border border-dashed border-glass-border/70 p-2.5 text-center text-xs text-ink-faint hover:border-accent hover:text-accent transition-colors cursor-pointer"
+        >
+          + Añadir o soltar tarea sin hora aquí
+        </button>
       )}
     </div>
   )

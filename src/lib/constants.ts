@@ -9,8 +9,8 @@ export const MAGNET_MINUTES = 10
 export const AGENDA_WINDOW_DAYS = 7
 
 export const MOUSE_DRAG_DISTANCE_PX = 6
-export const TOUCH_DRAG_DELAY_MS = 200
-export const TOUCH_DRAG_TOLERANCE_PX = 5
+export const TOUCH_DRAG_DELAY_MS = 180
+export const TOUCH_DRAG_TOLERANCE_PX = 10
 
 export const MIN_PASSWORD_LENGTH = 8
 export const DEFAULT_AREA_COLOR = '#6366f1'

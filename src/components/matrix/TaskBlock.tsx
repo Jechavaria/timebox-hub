@@ -37,9 +37,9 @@ export function TaskBlock({ task, area, onUpdate, onDelete }: TaskBlockProps) {
   const style = {
     height: `${height}px`,
     '--area-color': area.color,
-    transform: CSS.Transform.toString(transform),
+    transform: isDragging ? undefined : CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.4 : task.is_completed ? 0.65 : undefined,
+    opacity: isDragging ? 0.35 : task.is_completed ? 0.65 : undefined,
     zIndex: isDragging ? 10 : undefined,
   } as CSSProperties
 
@@ -68,6 +68,15 @@ export function TaskBlock({ task, area, onUpdate, onDelete }: TaskBlockProps) {
       <article
         ref={setNodeRef}
         style={style}
+        tabIndex={0}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            const target = event.target as HTMLElement
+            if (target.closest('button, [role="button"], input, a')) return
+            event.preventDefault()
+            setEditing(true)
+          }
+        }}
         onClick={(event) => {
           const target = event.target as HTMLElement
           if (target.closest('button, [role="button"], input, a')) return
@@ -75,7 +84,7 @@ export function TaskBlock({ task, area, onUpdate, onDelete }: TaskBlockProps) {
         }}
         aria-label={`${task.title}, ${formatDuration(task.estimated_duration_minutes)}${task.is_completed ? ', completada' : ''}`}
         className={clsx(
-          'glass-block flex w-full shrink-0 cursor-pointer items-center gap-1 overflow-hidden px-1.5 py-1 transition-all',
+          'glass-block flex w-full shrink-0 cursor-pointer items-center gap-1 overflow-hidden px-1.5 py-1 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent',
           isDragging && 'ring-3 ring-accent/60',
         )}
       >
@@ -83,25 +92,22 @@ export function TaskBlock({ task, area, onUpdate, onDelete }: TaskBlockProps) {
           ref={setActivatorNodeRef}
           label={`Arrastrar ${task.title} para cambiar su prioridad`}
           size="sm"
-          className="size-9 cursor-grab touch-manipulation active:cursor-grabbing"
+          className="size-9 cursor-grab touch-none active:cursor-grabbing"
           {...attributes}
           {...listeners}
         >
           <GripVertical />
         </IconButton>
-        <button
-          type="button"
-          onClick={() => setEditing(true)}
+        <div
           className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden text-left"
-          aria-label={`Editar ${task.title}`}
         >
-          <span className="min-w-0 flex-1 truncate text-sm font-medium text-ink">{task.title}</span>
+          <span className="min-w-0 flex-1 truncate text-sm font-medium text-ink select-none">{task.title}</span>
           {height >= 72 ? (
-            <span className="shrink-0 text-xs tabular-nums text-ink-muted">
+            <span className="shrink-0 text-xs tabular-nums text-ink-muted select-none">
               {formatDuration(task.estimated_duration_minutes)}
             </span>
           ) : null}
-        </button>
+        </div>
         <IconButton
           label={task.is_completed ? `Reabrir ${task.title}` : `Completar ${task.title}`}
           size="sm"
