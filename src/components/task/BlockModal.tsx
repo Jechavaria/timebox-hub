@@ -48,7 +48,7 @@ export function BlockModal({ block, onClose, onSave }: BlockModalProps) {
       try {
         normalizedTime = minutesToTime(timeToMinutes(startTime))
       } catch {
-        setError('Ingresa una hora válida entre 00:00 y 23:59.')
+        setError('Ingresa una hora válida entre 12:00 AM y 11:59 PM.')
         return
       }
     }

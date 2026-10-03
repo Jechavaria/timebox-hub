@@ -190,7 +190,7 @@ export function PlannerDndContext({ children }: PlannerDndContextProps) {
       : getDropStartMinutes(event, target.date, source.durationMinutes)
     const result = await planner.schedule.cloneTaskToBlock(task, target.date, startMinutes)
     if (!result.ok) {
-      toast.error(result.message, 'No se pudo añadir a la agenda')
+      toast.error(result.message, 'No se pudo añadir a la planificación diaria')
       return
     }
     toast.success(

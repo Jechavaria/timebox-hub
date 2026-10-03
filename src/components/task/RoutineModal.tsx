@@ -114,7 +114,7 @@ export function RoutineModal({ date, onClose, onSave }: RoutineModalProps) {
       try {
         normalizedTime = minutesToTime(timeToMinutes(startTime))
       } catch {
-        setError('Ingresa una hora válida entre 00:00 y 23:59.')
+        setError('Ingresa una hora válida entre 12:00 AM y 11:59 PM.')
         return
       }
     }
@@ -307,7 +307,7 @@ export function RoutineModal({ date, onClose, onSave }: RoutineModalProps) {
               onChange={(e) => setHasTime(e.target.checked)}
               className="size-4 rounded border-glass-border accent-accent"
             />
-            <span>Asignar hora de inicio en la agenda</span>
+            <span>Asignar hora de inicio en la planificación diaria</span>
           </label>
           {hasTime ? (
             <div className="mt-2">

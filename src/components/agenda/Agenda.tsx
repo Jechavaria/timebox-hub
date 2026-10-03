@@ -62,7 +62,7 @@ export function Agenda() {
       setDeleteError(result.message)
       return
     }
-    toast.success('El bloque se quitó de la agenda. La tarea maestra permanece en la Vista General de Tareas.')
+    toast.success('El bloque se quitó de la planificación diaria. La tarea maestra permanece en la Vista General de Tareas.')
     setBlockToDelete(null)
     setDeleteError(null)
   }
@@ -158,7 +158,7 @@ export function Agenda() {
         <div className="flex shrink-0 items-center gap-2">
           <div
             role="tablist"
-            aria-label="Modo de vista de agenda"
+            aria-label="Modo de vista diaria"
             className="flex shrink-0 items-center rounded-xl border border-glass-border bg-glass p-0.5"
           >
             <button
@@ -196,7 +196,7 @@ export function Agenda() {
           </div>
 
           {schedule.error ? (
-            <IconButton label="Reintentar carga de agenda" size="sm" onClick={() => { void schedule.refresh() }}>
+            <IconButton label="Reintentar carga de planificación diaria" size="sm" onClick={() => { void schedule.refresh() }}>
               <RotateCw />
             </IconButton>
           ) : null}
@@ -209,7 +209,7 @@ export function Agenda() {
 
       {schedule.isLoading ? (
         <div className="grid min-h-0 flex-1 place-items-center">
-          <Spinner label="Cargando agenda" />
+          <Spinner label="Cargando planificación diaria" />
         </div>
       ) : view === 'today-tomorrow' ? (
         <div className="flex md:grid md:grid-cols-2 h-full min-h-0 flex-1 gap-3 sm:gap-4 overflow-x-auto md:overflow-hidden snap-x snap-mandatory p-3 sm:p-4">
@@ -245,7 +245,7 @@ export function Agenda() {
         onSave={async (input) => {
           const result = await schedule.createRoutineBlock(input)
           if (result.ok) {
-            toast.success(`Rutina “${result.data.title}” agregada a la agenda.`)
+            toast.success(`Rutina “${result.data.title}” agregada a la planificación diaria.`)
           }
           return result
         }}
@@ -253,7 +253,7 @@ export function Agenda() {
       <Modal
         open={blockToDelete !== null}
         onClose={() => { if (!savingDelete) setBlockToDelete(null) }}
-        title="Quitar bloque de la agenda"
+        title="Quitar bloque de la planificación diaria"
         description={blockToDelete ? `“${blockToDelete.title}” se quitará de este día. La tarea maestra permanecerá en la Vista General de Tareas.` : undefined}
         footer={
           <div className="flex justify-end gap-2">

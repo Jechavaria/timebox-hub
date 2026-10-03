@@ -169,7 +169,7 @@ export function AreaColumn({ area, tasks, areaActions, taskActions }: AreaColumn
           </div>
         }
       >
-        <p className="text-sm text-ink-muted">Las tareas también se eliminarán. Los bloques que ya estén en tu agenda no se borrarán.</p>
+        <p className="text-sm text-ink-muted">Las tareas también se eliminarán. Los bloques que ya estén en tu planificación diaria no se borrarán.</p>
       </Modal>
     </>
   )

@@ -409,7 +409,7 @@ export function AnalyticsModal({ open, onClose }: AnalyticsModalProps) {
 
           {freeSlots.length === 0 ? (
             <p className="py-3 text-center text-xs text-ink-muted">
-              Agenda completa o sin bloques libres detectados en la jornada activa.
+              Jornada completa o sin bloques libres detectados en el día activo.
             </p>
           ) : (
             <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">

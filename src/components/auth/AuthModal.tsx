@@ -17,7 +17,7 @@ const MODE_COPY: Record<AuthMode, { tab: string; submit: string; description: st
   login: {
     tab: 'Iniciar sesión',
     submit: 'Entrar',
-    description: 'Entra para ver tu matriz de tareas y tu agenda.',
+    description: 'Entra para ver tu vista general de tareas y tu planificación diaria.',
   },
   register: {
     tab: 'Crear cuenta',

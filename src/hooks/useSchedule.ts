@@ -36,7 +36,7 @@ export interface UseScheduleResult {
   deleteBlock: (blockId: string) => Promise<MutationResult<string>>
 }
 
-const REQUEST_ERROR = 'No fue posible sincronizar la agenda. Comprueba tu conexión y vuelve a intentarlo.'
+const REQUEST_ERROR = 'No fue posible sincronizar la planificación diaria. Comprueba tu conexión y vuelve a intentarlo.'
 const MUTATION_ERROR = 'No fue posible guardar el bloque. Comprueba tu conexión y vuelve a intentarlo.'
 const OUTSIDE_DAY_ERROR = 'El bloque no cabe antes de la medianoche. Elige otro espacio u horario.'
 
@@ -200,7 +200,7 @@ export function useSchedule(): UseScheduleResult {
 
   const persistPlacement = useCallback(
     async (original: ScheduleBlock, scheduledDate: LocalDateString, startMinutes: number | null) => {
-      if (!userId) return { ok: false as const, message: 'Inicia sesión para editar la agenda.' }
+      if (!userId) return { ok: false as const, message: 'Inicia sesión para editar la planificación diaria.' }
       const placement = getRowsForPlacement(original, scheduledDate, startMinutes, blocks)
       if (!placement) return { ok: false as const, message: OUTSIDE_DAY_ERROR }
 
@@ -230,7 +230,7 @@ export function useSchedule(): UseScheduleResult {
   const cloneTaskToBlock = useCallback<UseScheduleResult['cloneTaskToBlock']>(
     async (task, scheduledDate, startMinutes) => {
       if (task.is_completed) {
-        return { ok: false, message: 'Reabre la tarea antes de añadirla a la agenda.' }
+        return { ok: false, message: 'Reabre la tarea antes de añadirla a la planificación diaria.' }
       }
       if (startMinutes !== null && (!Number.isFinite(startMinutes) || startMinutes < 0 || startMinutes >= 1440)) {
         return { ok: false, message: OUTSIDE_DAY_ERROR }
