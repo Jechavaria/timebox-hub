@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import clsx from 'clsx'
-import { Download, File, FileSpreadsheet, FileText, Image, LoaderCircle, Music2, RefreshCw, Trash2 } from 'lucide-react'
+import { Download, Eye, File, FileSpreadsheet, FileText, Image, LoaderCircle, Music2, RefreshCw, Trash2 } from 'lucide-react'
 import type { TaskFile, MutationResult } from '../../types/domain.ts'
 import { formatBytes } from '../../lib/files.ts'
 import { Button } from '../ui/Button.tsx'
@@ -14,6 +14,7 @@ interface FileListProps {
   deletingIds: ReadonlySet<string>
   replacingIds: ReadonlySet<string>
   error: string | null
+  onPreview?: (file: TaskFile) => void
   onReplace: (file: TaskFile, replacement: File) => Promise<MutationResult<TaskFile>>
   onDownload: (file: TaskFile) => Promise<MutationResult<void>>
   onDelete: (file: TaskFile) => Promise<MutationResult<void>>
@@ -37,6 +38,7 @@ export function FileList({
   deletingIds,
   replacingIds,
   error,
+  onPreview,
   onReplace,
   onDownload,
   onDelete,
@@ -88,7 +90,7 @@ export function FileList({
                     else inputRefs.current.delete(file.id)
                   }}
                   type="file"
-                  accept=".pdf,.docx,.xlsx,.md,.txt,.jpg,.jpeg,.png,.mp3,.m4a"
+                  accept="*/*"
                   aria-label={`Seleccionar archivo para reemplazar ${file.file_name}`}
                   className="sr-only"
                   onChange={(event) => {
@@ -108,6 +110,17 @@ export function FileList({
                     {formatBytes(file.file_size)} · {new Intl.DateTimeFormat('es', { dateStyle: 'medium' }).format(new Date(file.uploaded_at))}
                   </p>
                 </div>
+                {onPreview ? (
+                  <IconButton
+                    label={`Vista previa de ${file.file_name}`}
+                    size="sm"
+                    disabled={isDownloading || isDeleting || isReplacing}
+                    onClick={() => onPreview(file)}
+                    className="size-9 text-accent"
+                  >
+                    <Eye />
+                  </IconButton>
+                ) : null}
                 <IconButton
                   label={`Descargar ${file.file_name}`}
                   size="sm"

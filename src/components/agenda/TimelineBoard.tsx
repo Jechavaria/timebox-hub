@@ -18,6 +18,7 @@ interface TimelineBoardProps {
   onDelete: (blockId: string) => void
   onOpen: (block: ScheduleBlock) => void
   onToggleComplete: (block: ScheduleBlock) => void
+  onResizeDuration?: (blockId: string, durationMinutes: number) => void
 }
 
 export function TimelineBoard({
@@ -30,6 +31,7 @@ export function TimelineBoard({
   onDelete,
   onOpen,
   onToggleComplete,
+  onResizeDuration,
 }: TimelineBoardProps) {
   const timedBlocks = blocks.filter((block) => block.start_time !== null)
 
@@ -55,6 +57,7 @@ export function TimelineBoard({
             onDelete={onDelete}
             onOpen={onOpen}
             onToggleComplete={onToggleComplete}
+            onResizeDuration={onResizeDuration}
           />
         ))}
       </div>

@@ -7,16 +7,70 @@ import { createUuid } from './ids.ts'
 import { supabase } from './supabase.ts'
 
 const MIME_BY_EXTENSION: Readonly<Record<string, string>> = {
+  // Documentos y hojas de cálculo
   pdf: 'application/pdf',
+  doc: 'application/msword',
   docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  xls: 'application/vnd.ms-excel',
   xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  md: 'text/markdown',
+  xlsm: 'application/vnd.ms-excel.sheet.macroEnabled.12',
+  csv: 'text/csv',
+  ppt: 'application/vnd.ms-powerpoint',
+  pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
   txt: 'text/plain',
+  md: 'text/markdown',
+  rtf: 'application/rtf',
+
+  // Imágenes
   jpg: 'image/jpeg',
   jpeg: 'image/jpeg',
   png: 'image/png',
+  gif: 'image/gif',
+  webp: 'image/webp',
+  svg: 'image/svg+xml',
+  bmp: 'image/bmp',
+  ico: 'image/x-icon',
+
+  // Audio y Video
   mp3: 'audio/mpeg',
   m4a: 'audio/mp4',
+  wav: 'audio/wav',
+  ogg: 'audio/ogg',
+  mp4: 'video/mp4',
+  webm: 'video/webm',
+  mov: 'video/quicktime',
+
+  // Código, lenguajes y datos
+  json: 'application/json',
+  xml: 'application/xml',
+  yaml: 'text/yaml',
+  yml: 'text/yaml',
+  toml: 'text/plain',
+  sql: 'text/plain',
+  js: 'text/javascript',
+  ts: 'text/plain',
+  jsx: 'text/javascript',
+  tsx: 'text/plain',
+  py: 'text/x-python',
+  c: 'text/x-c',
+  cpp: 'text/x-c',
+  h: 'text/x-c',
+  hpp: 'text/x-c',
+  cs: 'text/plain',
+  ino: 'text/plain',
+  html: 'text/html',
+  css: 'text/css',
+  sh: 'text/plain',
+  bat: 'text/plain',
+  ps1: 'text/plain',
+
+  // Comprimidos y diagramas
+  zip: 'application/zip',
+  rar: 'application/x-rar-compressed',
+  '7z': 'application/x-7z-compressed',
+  tar: 'application/x-tar',
+  gz: 'application/gzip',
+  drawio: 'application/xml',
 }
 
 export class AttachmentError extends Error {
@@ -34,10 +88,7 @@ function getExtension(fileName: string): string {
 
 export function getAttachmentMime(file: File): string {
   const extension = getExtension(file.name)
-  const mime = MIME_BY_EXTENSION[extension]
-  if (!mime) {
-    throw new AttachmentError('Tipo de archivo no admitido. Usa PDF, DOCX, XLSX, MD, TXT, JPG, PNG, MP3 o M4A.')
-  }
+  const mime = MIME_BY_EXTENSION[extension] || file.type || 'application/octet-stream'
   if (file.size > MAX_FILE_BYTES) {
     throw new AttachmentError('Cada archivo debe pesar como máximo 25 MiB.')
   }
@@ -80,6 +131,17 @@ export async function getSignedUrl(objectPath: string, fileName: string): Promis
     .createSignedUrl(objectPath, SIGNED_URL_TTL_SECONDS, { download: fileName })
   if (error || !data?.signedUrl) {
     throw new AttachmentError('No se pudo preparar la descarga. Comprueba tus permisos e inténtalo de nuevo.')
+  }
+  return data.signedUrl
+}
+
+/** Genera una URL firmada para previsualización inline en la app (imágenes, video, audio, pdf, texto). */
+export async function getPreviewSignedUrl(objectPath: string): Promise<string> {
+  const { data, error } = await supabase.storage
+    .from(STORAGE_BUCKET)
+    .createSignedUrl(objectPath, SIGNED_URL_TTL_SECONDS)
+  if (error || !data?.signedUrl) {
+    throw new AttachmentError('No se pudo generar la vista previa del archivo.')
   }
   return data.signedUrl
 }

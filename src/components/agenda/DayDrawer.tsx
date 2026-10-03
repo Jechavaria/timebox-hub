@@ -17,6 +17,7 @@ interface DayDrawerProps {
   onDelete: (blockId: string) => void
   onOpen: (block: ScheduleBlock) => void
   onToggleComplete: (block: ScheduleBlock) => void
+  onResizeDuration?: (blockId: string, durationMinutes: number) => void
   onMaximize?: (date: LocalDateString) => void
 }
 
@@ -30,6 +31,7 @@ export function DayDrawer({
   onDelete,
   onOpen,
   onToggleComplete,
+  onResizeDuration,
   onMaximize,
 }: DayDrawerProps) {
   const { isOver, setNodeRef } = useDroppable({
@@ -117,6 +119,7 @@ export function DayDrawer({
           onDelete={onDelete}
           onOpen={onOpen}
           onToggleComplete={onToggleComplete}
+          onResizeDuration={onResizeDuration}
         />
       </div>
       <UntimedTray

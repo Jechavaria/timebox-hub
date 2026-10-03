@@ -14,25 +14,19 @@ values (
   'task-attachments',
   'task-attachments',
   false,
-  26214400,
-  array[
-    'application/pdf',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    'text/markdown',
-    'text/plain',
-    'image/jpeg',
-    'image/png',
-    'audio/mpeg',
-    'audio/mp4'
-  ]::text[]
+  52428800,
+  null
 )
 on conflict (id) do update
 set
   name = excluded.name,
   public = false,
   file_size_limit = excluded.file_size_limit,
-  allowed_mime_types = excluded.allowed_mime_types;
+  allowed_mime_types = null;
+
+-- Permitir tareas sin estimación de tiempo (0 minutos) en la vista general
+alter table public.master_tasks drop constraint if exists master_tasks_estimated_duration_minutes_check;
+alter table public.master_tasks add constraint master_tasks_estimated_duration_minutes_check check (estimated_duration_minutes between 0 and 1440);
 
 -- En Supabase, storage.objects ya tiene RLS habilitado por defecto y su propietario es supabase_storage_admin.
 -- No se debe ejecutar "alter table storage.objects enable row level security;" porque genera el error 42501.

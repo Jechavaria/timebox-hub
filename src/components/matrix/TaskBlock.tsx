@@ -68,9 +68,14 @@ export function TaskBlock({ task, area, onUpdate, onDelete }: TaskBlockProps) {
       <article
         ref={setNodeRef}
         style={style}
+        onClick={(event) => {
+          const target = event.target as HTMLElement
+          if (target.closest('button, [role="button"], input, a')) return
+          setEditing(true)
+        }}
         aria-label={`${task.title}, ${formatDuration(task.estimated_duration_minutes)}${task.is_completed ? ', completada' : ''}`}
         className={clsx(
-          'glass-block flex w-full shrink-0 items-center gap-1 overflow-hidden px-1.5 py-1',
+          'glass-block flex w-full shrink-0 cursor-pointer items-center gap-1 overflow-hidden px-1.5 py-1 transition-all',
           isDragging && 'ring-3 ring-accent/60',
         )}
       >

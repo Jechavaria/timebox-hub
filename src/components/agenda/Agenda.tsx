@@ -107,6 +107,11 @@ export function Agenda() {
     return { ok: true, data: undefined }
   }
 
+  const handleResizeDuration = async (blockId: string, durationMinutes: number) => {
+    const result = await schedule.updateBlock(blockId, { planned_duration_minutes: durationMinutes })
+    if (!result.ok) toast.error(result.message, 'No se pudo redimensionar el bloque')
+  }
+
   return (
     <GlassPanel
       as="section"
@@ -165,6 +170,7 @@ export function Agenda() {
               }}
               onOpen={setBlockToEdit}
               onToggleComplete={(block) => { void handleToggleComplete(block) }}
+              onResizeDuration={handleResizeDuration}
               onMaximize={setMaximizedDate}
             />
           </div>
@@ -187,6 +193,7 @@ export function Agenda() {
               }}
               onOpen={setBlockToEdit}
               onToggleComplete={(block) => { void handleToggleComplete(block) }}
+              onResizeDuration={handleResizeDuration}
               onMaximize={setMaximizedDate}
             />
           </div>
@@ -249,6 +256,7 @@ export function Agenda() {
         }}
         onOpen={setBlockToEdit}
         onToggleComplete={(block) => { void handleToggleComplete(block) }}
+        onResizeDuration={handleResizeDuration}
       />
 
       <BlockModal

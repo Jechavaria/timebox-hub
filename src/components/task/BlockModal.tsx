@@ -5,6 +5,7 @@ import { minutesToTime, timeToMinutes } from '../../lib/time.ts'
 import type { MutationResult, ScheduleBlock, ScheduleBlockUpdate } from '../../types/domain.ts'
 import { Button } from '../ui/Button.tsx'
 import { Modal } from '../ui/Modal.tsx'
+import { DurationPicker } from '../ui/DurationPicker.tsx'
 
 interface BlockModalProps {
   block: ScheduleBlock | null
@@ -108,35 +109,24 @@ export function BlockModal({ block, onClose, onSave }: BlockModalProps) {
             className="glass-input resize-y py-3"
           />
         </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor={`${uid}-duration`} className="text-sm font-medium text-ink">Duración planeada</label>
-            <div className="relative">
-              <input
-                id={`${uid}-duration`}
-                type="number"
-                min={1}
-                max={1440}
-                step={5}
-                value={duration}
-                onChange={(event) => setDuration(Number(event.target.value))}
-                className="glass-input pr-12 tabular-nums"
-              />
-              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-ink-faint">min</span>
-            </div>
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor={`${uid}-time`} className="text-sm font-medium text-ink">Hora de inicio</label>
-            <input
-              id={`${uid}-time`}
-              type="time"
-              value={startTime}
-              onChange={(event) => setStartTime(event.target.value)}
-              className="glass-input"
-            />
-          </div>
+        <DurationPicker
+          id={`${uid}-duration`}
+          value={duration}
+          onChange={setDuration}
+          label="Duración planeada (Horas y Minutos)"
+        />
+
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor={`${uid}-time`} className="text-sm font-medium text-ink">Hora de inicio</label>
+          <input
+            id={`${uid}-time`}
+            type="time"
+            value={startTime}
+            onChange={(event) => setStartTime(event.target.value)}
+            className="glass-input"
+          />
+          <p className="text-xs text-ink-faint">Deja la hora vacía para mover el bloque a «Sin hora».</p>
         </div>
-        <p className="text-xs text-ink-faint">Deja la hora vacía para mover el bloque a «Sin hora».</p>
         {error ? <p role="alert" className="text-sm text-danger">{error}</p> : null}
       </form>
     </Modal>

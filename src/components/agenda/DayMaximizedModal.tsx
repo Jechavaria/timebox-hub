@@ -21,6 +21,7 @@ interface DayMaximizedModalProps {
   onDelete: (blockId: string) => void
   onOpen: (block: ScheduleBlock) => void
   onToggleComplete: (block: ScheduleBlock) => void
+  onResizeDuration?: (blockId: string, durationMinutes: number) => void
 }
 
 export function DayMaximizedModal({
@@ -35,6 +36,7 @@ export function DayMaximizedModal({
   onDelete,
   onOpen,
   onToggleComplete,
+  onResizeDuration,
 }: DayMaximizedModalProps) {
   const timelineScrollRef = useRef<HTMLDivElement>(null)
 
@@ -171,6 +173,7 @@ export function DayMaximizedModal({
             onDelete={onDelete}
             onOpen={onOpen}
             onToggleComplete={onToggleComplete}
+            onResizeDuration={onResizeDuration}
           />
         </div>
 

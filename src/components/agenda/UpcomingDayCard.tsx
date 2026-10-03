@@ -101,8 +101,13 @@ export function UpcomingDayCard({
             return (
               <div
                 key={block.id}
+                onClick={(e) => {
+                  const target = e.target as HTMLElement
+                  if (target.closest('button, [role="button"], input, a')) return
+                  onOpen(block)
+                }}
                 className={clsx(
-                  'glass-block flex items-center gap-1.5 px-2 py-1.5 transition-all',
+                  'glass-block flex cursor-pointer items-center gap-1.5 px-2 py-1.5 transition-all',
                   block.is_completed && 'opacity-60',
                 )}
                 style={{ '--area-color': areaColor } as React.CSSProperties}

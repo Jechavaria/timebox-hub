@@ -7,6 +7,7 @@ import { minutesToTime, timeToMinutes } from '../../lib/time.ts'
 import type { CreateRoutineBlockInput, LocalDateString, MutationResult, RoutineKind, ScheduleBlock } from '../../types/domain.ts'
 import { Button } from '../ui/Button.tsx'
 import { Modal } from '../ui/Modal.tsx'
+import { DurationPicker } from '../ui/DurationPicker.tsx'
 
 interface RoutineModalProps {
   date: LocalDateString | null
@@ -260,43 +261,13 @@ export function RoutineModal({ date, onClose, onSave }: RoutineModalProps) {
         ) : null}
 
         {/* Duración */}
-        <div>
-          <div className="flex items-center justify-between">
-            <label htmlFor={`routine-dur-${uid}`} className="text-xs font-medium text-ink-muted">
-              Duración (minutos)
-            </label>
-            <span className="text-xs font-semibold tabular-nums text-accent">
-              {duration >= 60 ? `${Math.floor(duration / 60)}h ${duration % 60 ? `${duration % 60}m` : ''}` : `${duration}m`}
-            </span>
-          </div>
-          <input
-            id={`routine-dur-${uid}`}
-            type="number"
-            min={1}
-            max={1440}
-            required
-            value={duration}
-            onChange={(e) => setDuration(Math.max(1, parseInt(e.target.value, 10) || 1))}
-            className="glass-input mt-1 w-full"
-          />
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            {QUICK_DURATIONS.map((preset) => (
-              <button
-                key={preset}
-                type="button"
-                onClick={() => setDuration(preset)}
-                className={clsx(
-                  'rounded-lg border px-2 py-0.5 text-[11px] font-medium transition-colors',
-                  duration === preset
-                    ? 'border-accent bg-accent text-white'
-                    : 'border-glass-border bg-glass text-ink-muted hover:text-ink hover:bg-glass-strong',
-                )}
-              >
-                {preset === 480 ? '8h' : preset >= 60 ? `${preset / 60}h` : `${preset}m`}
-              </button>
-            ))}
-          </div>
-        </div>
+        <DurationPicker
+          id={`routine-dur-${uid}`}
+          value={duration}
+          onChange={setDuration}
+          presets={QUICK_DURATIONS}
+          label="Duración (Horas y Minutos)"
+        />
 
         {/* Horario */}
         <div className="rounded-xl border border-glass-border bg-glass p-3">

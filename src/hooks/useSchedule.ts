@@ -218,10 +218,12 @@ export function useSchedule(): UseScheduleResult {
         if (data) setBlocks((current) => mergeBlocks(current, data))
         const saved = data?.find((candidate) => candidate.id === original.id) ?? placement.block
         return { ok: true as const, data: saved }
-      } catch {
+      } catch (err) {
+        console.error('Error al guardar bloque en Supabase:', err)
         ids.forEach((id) => pendingIds.current.delete(id))
         setBlocks(previous)
-        return { ok: false as const, message: MUTATION_ERROR }
+        const message = (err as { message?: string })?.message || MUTATION_ERROR
+        return { ok: false as const, message }
       }
     },
     [blocks, userId],
@@ -233,6 +235,9 @@ export function useSchedule(): UseScheduleResult {
         return { ok: false, message: OUTSIDE_DAY_ERROR }
       }
 
+      // En la agenda diaria, un bloque debe durar al menos 15 minutos (por defecto 30 si la tarea no tenía tiempo estimado)
+      const duration = Math.max(15, Math.min(1440, task.estimated_duration_minutes || 30))
+
       const original: ScheduleBlock = {
         id: createUuid(),
         user_id: userId ?? '',
@@ -242,7 +247,7 @@ export function useSchedule(): UseScheduleResult {
         notes: '',
         scheduled_date: scheduledDate,
         start_time: null,
-        planned_duration_minutes: task.estimated_duration_minutes,
+        planned_duration_minutes: duration,
         actual_duration_minutes: null,
         is_completed: false,
         is_routine: false,

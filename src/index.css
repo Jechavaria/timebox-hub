@@ -230,6 +230,22 @@
     color: #141823;
   }
 
+  :root {
+    caret-color: transparent;
+  }
+
+  input,
+  textarea,
+  [contenteditable="true"] {
+    caret-color: auto;
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: color-mix(in oklab, var(--color-ink) 72%, transparent);
+    opacity: 1;
+  }
+
   ::selection {
     background: color-mix(in oklab, var(--color-accent) 40%, transparent);
     color: var(--color-ink);
@@ -241,34 +257,20 @@
   }
 }
 
-/* Capa de luz especular en los bordes acrílicos (ilumina únicamente el contorno, no todo el relleno). */
+/* Superficies acrílicas nítidas sin artefactos de luz en el fondo */
 @utility glass-panel {
   @apply backdrop-blur-md;
-  border: 1px solid transparent;
+  border: 1px solid var(--color-glass-border);
   border-radius: var(--radius-glass);
-  background:
-    linear-gradient(var(--color-glass), var(--color-glass)) padding-box,
-    radial-gradient(
-      var(--light-radius) circle at var(--pointer-x) var(--pointer-y),
-      color-mix(in oklab, var(--light-color) calc(var(--glow-alpha) * 160%), var(--color-glass-border)),
-      var(--color-glass-border)
-    ) border-box;
-  background-attachment: scroll, fixed;
+  background-color: var(--color-glass);
   box-shadow: var(--glass-shadow);
 }
 
 @utility glass-popover {
   @apply backdrop-blur-xl;
-  border: 1px solid transparent;
+  border: 1px solid var(--color-glass-border);
   border-radius: var(--radius-glass);
-  background:
-    linear-gradient(var(--color-popover), var(--color-popover)) padding-box,
-    radial-gradient(
-      var(--light-radius) circle at var(--pointer-x) var(--pointer-y),
-      color-mix(in oklab, var(--light-color) calc(var(--glow-alpha) * 140%), var(--color-glass-border)),
-      var(--color-glass-border)
-    ) border-box;
-  background-attachment: scroll, fixed;
+  background-color: var(--color-popover);
   box-shadow: var(--float-shadow);
 }
 
@@ -286,6 +288,13 @@
   transition-property: background-color, border-color, box-shadow, filter, opacity;
   transition-duration: 200ms;
   transition-timing-function: var(--ease-out-soft);
+
+  @media (hover: hover) {
+    &:hover {
+      border-color: color-mix(in oklab, var(--block-color) 70%, var(--color-glass-border));
+      box-shadow: 0 0 10px -2px color-mix(in oklab, var(--block-color) 32%, transparent);
+    }
+  }
 }
 
 @utility glass-muted {
@@ -310,7 +319,8 @@
   transition-duration: 160ms;
 
   &::placeholder {
-    color: var(--color-ink-faint);
+    color: color-mix(in oklab, var(--color-ink) 72%, transparent) !important;
+    opacity: 1 !important;
   }
 
   &:focus-visible {
@@ -353,8 +363,7 @@
 
 /*
  * Brillo (glow) de todos los elementos clicables.
- * Sin capa a propósito: debe prevalecer sobre las utilidades de Tailwind en hover/active.
- * [data-pulse] lo pone JS durante ~260 ms tras un clic para que el destello se note aunque el clic sea corto.
+ * Concentrado, sin dispersión excesiva fuera del botón (~20% reducido y bordes definidos).
  */
 :where(button, a[href], [role="button"], summary):not(:disabled) {
   transition-property: background-color, border-color, color, filter, opacity, scale, transform, box-shadow;
@@ -365,18 +374,18 @@
 @media (hover: hover) {
   :where(button, a[href], [role="button"], summary):not(:disabled):hover {
     box-shadow:
-      0 0 0 1px color-mix(in oklab, var(--glow-color) 40%, transparent),
-      0 0 11px -1px color-mix(in oklab, var(--glow-color) 42%, transparent),
-      0 0 24px -5px color-mix(in oklab, var(--glow-color) 34%, transparent);
+      0 0 0 1px color-mix(in oklab, var(--glow-color) 32%, transparent),
+      0 0 8px -1px color-mix(in oklab, var(--glow-color) 30%, transparent),
+      0 0 16px -4px color-mix(in oklab, var(--glow-color) 20%, transparent);
   }
 }
 
 :where(button, a[href], [role="button"], summary):not(:disabled):is(:active, [data-pulse]) {
   box-shadow:
-    0 0 0 1px color-mix(in oklab, var(--glow-color) 68%, transparent),
-    0 0 16px 0px color-mix(in oklab, var(--glow-color) 54%, transparent),
-    0 0 36px 3px color-mix(in oklab, var(--glow-color) 38%, transparent);
-  filter: brightness(1.1);
+    0 0 0 1px color-mix(in oklab, var(--glow-color) 52%, transparent),
+    0 0 12px 0px color-mix(in oklab, var(--glow-color) 40%, transparent),
+    0 0 24px 2px color-mix(in oklab, var(--glow-color) 26%, transparent);
+  filter: brightness(1.08);
   transition-duration: 60ms;
 }
 

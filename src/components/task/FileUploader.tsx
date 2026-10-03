@@ -4,7 +4,7 @@ import clsx from 'clsx'
 import { FileUp } from 'lucide-react'
 import type { MutationResult, TaskFile } from '../../types/domain.ts'
 
-const ACCEPTED_TYPES = '.pdf,.docx,.xlsx,.md,.txt,.jpg,.jpeg,.png,.mp3,.m4a'
+const ACCEPTED_TYPES = '*/*'
 
 interface FileUploaderProps {
   disabled?: boolean
@@ -75,7 +75,7 @@ export function FileUploader({ disabled = false, onUpload }: FileUploaderProps) 
         <span className="text-sm font-medium text-ink">
           {isUploading ? 'Subiendo archivos...' : isDragging ? 'Suelta los archivos aquí' : 'Arrastra archivos o selecciónalos'}
         </span>
-        <span className="text-xs text-ink-faint">PDF, DOCX, XLSX, MD, TXT, JPG, PNG, MP3 o M4A · hasta 25 MiB c/u</span>
+        <span className="text-xs text-ink-faint">Documentos, imágenes, audio, video, código y comprimidos · hasta 25 MiB c/u</span>
         {!isUploading ? (
           <span aria-hidden="true" className="rounded-xl px-3 py-1 text-xs font-medium text-accent">
             Seleccionar archivos

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useAuth } from './useAuth.ts'
 import { useToast } from './useToast.ts'
-import { deleteAttachment, getAttachmentMime, getSignedUrl, uploadAttachment } from '../lib/storage.ts'
+import { deleteAttachment, getAttachmentMime, getPreviewSignedUrl, getSignedUrl, uploadAttachment } from '../lib/storage.ts'
 import { USER_QUOTA_BYTES } from '../lib/constants.ts'
 import { supabase } from '../lib/supabase.ts'
 import type { MutationResult, TaskFile } from '../types/domain.ts'
@@ -18,6 +18,7 @@ export interface UseTaskFilesResult {
   uploadFiles: (files: File[]) => Promise<MutationResult<TaskFile[]>>
   replaceFile: (existingFile: TaskFile, replacement: File) => Promise<MutationResult<TaskFile>>
   downloadFile: (file: TaskFile) => Promise<MutationResult<void>>
+  getPreviewUrl: (file: TaskFile) => Promise<MutationResult<string>>
   deleteFile: (file: TaskFile) => Promise<MutationResult<void>>
 }
 
@@ -241,6 +242,21 @@ export function useTaskFiles(taskId: string | null): UseTaskFilesResult {
     }
   }, [userId])
 
+  const getPreviewUrl = useCallback(
+    async (file: TaskFile): Promise<MutationResult<string>> => {
+      if (!userId || file.user_id !== userId) {
+        return { ok: false, message: 'No tienes permiso para ver este archivo.' }
+      }
+      try {
+        const previewUrl = await getPreviewSignedUrl(file.file_url)
+        return { ok: true, data: previewUrl }
+      } catch {
+        return { ok: false, message: 'No se pudo generar la vista previa del archivo.' }
+      }
+    },
+    [userId],
+  )
+
   const deleteFile = useCallback(
     async (file: TaskFile): Promise<MutationResult<void>> => {
       if (!userId || file.user_id !== userId || file.master_task_id !== taskId) {
@@ -285,6 +301,7 @@ export function useTaskFiles(taskId: string | null): UseTaskFilesResult {
     uploadFiles,
     replaceFile,
     downloadFile,
+    getPreviewUrl,
     deleteFile,
   }
 }
