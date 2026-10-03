@@ -229,9 +229,6 @@ export function useSchedule(): UseScheduleResult {
 
   const cloneTaskToBlock = useCallback<UseScheduleResult['cloneTaskToBlock']>(
     async (task, scheduledDate, startMinutes) => {
-      if (task.is_completed) {
-        return { ok: false, message: 'Reabre la tarea antes de añadirla a la planificación diaria.' }
-      }
       if (startMinutes !== null && (!Number.isFinite(startMinutes) || startMinutes < 0 || startMinutes >= 1440)) {
         return { ok: false, message: OUTSIDE_DAY_ERROR }
       }

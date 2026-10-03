@@ -7,10 +7,10 @@ import { PlannerProvider } from '../../context/PlannerProvider.tsx'
 export function AppShell() {
   return (
     <PlannerProvider>
-      <div className="app-frame flex h-dvh flex-col gap-3 overflow-hidden sm:gap-4">
+      <div className="app-frame flex min-h-screen flex-col gap-5 pb-16 sm:gap-6 sm:pb-24">
         <Navbar />
         <PlannerDndContext>
-          <main className="flex min-h-0 flex-1 flex-col gap-3 sm:gap-4 overflow-hidden">
+          <main className="flex flex-col gap-6 sm:gap-8">
             <Matrix />
             <Agenda />
           </main>

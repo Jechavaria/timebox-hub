@@ -32,7 +32,11 @@ export function BackgroundLayer() {
   if (activeBackground.kind === 'gradient' || !activeBackground.src) return null
 
   return (
-    <div aria-hidden="true" className="pointer-events-none fixed inset-0 -z-1 overflow-hidden">
+    <div
+      aria-hidden="true"
+      className="pointer-events-none fixed inset-0 -z-1 overflow-hidden"
+      style={{ transform: 'translateZ(0)', willChange: 'transform' }}
+    >
       {activeBackground.kind === 'video' ? (
         <video
           key={activeBackground.id}
@@ -44,6 +48,7 @@ export function BackgroundLayer() {
           disablePictureInPicture
           preload="auto"
           className="size-full animate-fade-in object-cover"
+          style={{ transform: 'translateZ(0)', willChange: 'transform' }}
         />
       ) : (
         <img

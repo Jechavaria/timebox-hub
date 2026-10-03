@@ -1,12 +1,11 @@
 import { useMemo, useState } from 'react'
-import clsx from 'clsx'
-import { Calendar, CalendarDays, Columns2, RotateCw, Trash2 } from 'lucide-react'
+import { Calendar, CalendarDays, RotateCw, Trash2 } from 'lucide-react'
 import { AGENDA_WINDOW_DAYS } from '../../lib/constants.ts'
 import { getWeekDates, toLocalDateString } from '../../lib/time.ts'
 import { useNow } from '../../hooks/useNow.ts'
 import { usePlanner } from '../../hooks/usePlanner.ts'
 import { useToast } from '../../hooks/useToast.ts'
-import type { AgendaView, MutationResult, ScheduleBlock } from '../../types/domain.ts'
+import type { MutationResult, ScheduleBlock } from '../../types/domain.ts'
 import { Button } from '../ui/Button.tsx'
 import { GlassPanel } from '../ui/GlassPanel.tsx'
 import { IconButton } from '../ui/IconButton.tsx'
@@ -16,33 +15,28 @@ import { BlockModal } from '../task/BlockModal.tsx'
 import { CompleteBlockDialog } from '../task/CompleteBlockDialog.tsx'
 import { RoutineModal } from '../task/RoutineModal.tsx'
 import { DayDrawer } from './DayDrawer.tsx'
-
-const AGENDA_VIEW_STORAGE_KEY = 'timebox_agenda_view'
+import { UpcomingDayCard } from './UpcomingDayCard.tsx'
+import { DayMaximizedModal } from './DayMaximizedModal.tsx'
 
 export function Agenda() {
   const { areas, tasks, schedule } = usePlanner()
   const toast = useToast()
   const now = useNow({ intervalMs: 15_000 })
   const today = toLocalDateString(now)
-  const [view, setView] = useState<AgendaView>(() => {
-    const saved = localStorage.getItem(AGENDA_VIEW_STORAGE_KEY)
-    return saved === 'week' ? 'week' : 'today-tomorrow'
-  })
+
   const [routineDate, setRoutineDate] = useState<string | null>(null)
+  const [maximizedDate, setMaximizedDate] = useState<string | null>(null)
   const [blockToEdit, setBlockToEdit] = useState<ScheduleBlock | null>(null)
   const [blockToComplete, setBlockToComplete] = useState<ScheduleBlock | null>(null)
   const [blockToDelete, setBlockToDelete] = useState<ScheduleBlock | null>(null)
   const [savingDelete, setSavingDelete] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
 
-  const handleViewChange = (nextView: AgendaView) => {
-    setView(nextView)
-    localStorage.setItem(AGENDA_VIEW_STORAGE_KEY, nextView)
-  }
-
   const days = useMemo(() => getWeekDates(today, AGENDA_WINDOW_DAYS), [today])
-  const visibleDays = useMemo(() => (view === 'today-tomorrow' ? days.slice(0, 2) : days), [days, view])
+  const tomorrow = days[1]
+  const upcomingDays = useMemo(() => days.slice(2), [days])
   const areasById = useMemo(() => new Map(areas.areas.map((area) => [area.id, area])), [areas.areas])
+
   const blocksByDate = useMemo(() => {
     const grouped = new Map<string, ScheduleBlock[]>()
     for (const block of schedule.blocks) {
@@ -113,32 +107,11 @@ export function Agenda() {
     return { ok: true, data: undefined }
   }
 
-  const renderDay = (date: string, index: number) => (
-    <DayDrawer
-      key={date}
-      date={date}
-      isToday={index === 0}
-      now={now}
-      areasById={areasById}
-      blocks={blocksByDate.get(date) ?? []}
-      onAddRoutine={setRoutineDate}
-      onDelete={(blockId) => {
-        const block = schedule.blocks.find((candidate) => candidate.id === blockId)
-        if (block) {
-          setBlockToDelete(block)
-          setDeleteError(null)
-        }
-      }}
-      onOpen={setBlockToEdit}
-      onToggleComplete={(block) => { void handleToggleComplete(block) }}
-    />
-  )
-
   return (
     <GlassPanel
       as="section"
       aria-labelledby="agenda-heading"
-      className="flex min-h-0 flex-1 flex-col overflow-hidden"
+      className="flex flex-col"
     >
       <header className="flex shrink-0 items-center justify-between gap-3 border-b border-glass-border px-4 py-3 sm:px-6">
         <div className="flex min-w-0 items-center gap-3">
@@ -150,51 +123,12 @@ export function Agenda() {
               Planificación Diaria
             </h2>
             <p className="truncate text-xs text-ink-muted">
-              {view === 'today-tomorrow' ? 'Enfoque inmediato: Hoy y Mañana' : 'Vista proyectada de 7 días'}
+              Hoy, Mañana y lista de pendientes para los próximos días
             </p>
           </div>
         </div>
 
         <div className="flex shrink-0 items-center gap-2">
-          <div
-            role="tablist"
-            aria-label="Modo de vista diaria"
-            className="flex shrink-0 items-center rounded-xl border border-glass-border bg-glass p-0.5"
-          >
-            <button
-              type="button"
-              role="tab"
-              aria-selected={view === 'today-tomorrow'}
-              onClick={() => handleViewChange('today-tomorrow')}
-              className={clsx(
-                'flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition-all duration-150',
-                view === 'today-tomorrow'
-                  ? 'bg-accent text-white shadow-sm'
-                  : 'text-ink-muted hover:text-ink hover:bg-glass-strong',
-              )}
-            >
-              <Columns2 className="size-3.5" aria-hidden="true" />
-              <span className="hidden sm:inline">Hoy y Mañana</span>
-              <span className="sm:hidden">2 Días</span>
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={view === 'week'}
-              onClick={() => handleViewChange('week')}
-              className={clsx(
-                'flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition-all duration-150',
-                view === 'week'
-                  ? 'bg-accent text-white shadow-sm'
-                  : 'text-ink-muted hover:text-ink hover:bg-glass-strong',
-              )}
-            >
-              <CalendarDays className="size-3.5" aria-hidden="true" />
-              <span className="hidden sm:inline">Semana (7 días)</span>
-              <span className="sm:hidden">7 Días</span>
-            </button>
-          </div>
-
           {schedule.error ? (
             <IconButton label="Reintentar carga de planificación diaria" size="sm" onClick={() => { void schedule.refresh() }}>
               <RotateCw />
@@ -208,26 +142,114 @@ export function Agenda() {
       ) : null}
 
       {schedule.isLoading ? (
-        <div className="grid min-h-0 flex-1 place-items-center">
+        <div className="grid min-h-[300px] place-items-center p-8">
           <Spinner label="Cargando planificación diaria" />
         </div>
-      ) : view === 'today-tomorrow' ? (
-        <div className="flex md:grid md:grid-cols-2 h-full min-h-0 flex-1 gap-3 sm:gap-4 overflow-x-auto md:overflow-hidden snap-x snap-mandatory p-3 sm:p-4">
-          {visibleDays.map((date, index) => (
-            <div key={date} className="w-[88vw] sm:w-[360px] md:w-auto shrink-0 md:shrink snap-start h-full min-h-0">
-              {renderDay(date, index)}
-            </div>
-          ))}
-        </div>
       ) : (
-        <div className="flex h-full min-h-0 flex-1 gap-3 sm:gap-4 overflow-x-auto snap-x snap-mandatory p-3 sm:p-4">
-          {visibleDays.map((date, index) => (
-            <div key={date} className="w-[85vw] max-w-[340px] sm:w-[320px] md:w-[350px] shrink-0 snap-start h-full min-h-0">
-              {renderDay(date, index)}
+        <div className="flex flex-col gap-6 p-4 sm:p-6">
+          {/* 1. HOY: Todo el ancho, vista alargada y detallada de horas */}
+          <div className="flex w-full flex-col gap-2">
+            <DayDrawer
+              date={today}
+              isToday={true}
+              now={now}
+              areasById={areasById}
+              blocks={blocksByDate.get(today) ?? []}
+              onAddRoutine={setRoutineDate}
+              onDelete={(blockId) => {
+                const block = schedule.blocks.find((candidate) => candidate.id === blockId)
+                if (block) {
+                  setBlockToDelete(block)
+                  setDeleteError(null)
+                }
+              }}
+              onOpen={setBlockToEdit}
+              onToggleComplete={(block) => { void handleToggleComplete(block) }}
+              onMaximize={setMaximizedDate}
+            />
+          </div>
+
+          {/* 2. MAÑANA: Debajo de Hoy, todo el ancho, vista alargada con su propio separador */}
+          <div className="flex w-full flex-col gap-2">
+            <DayDrawer
+              date={tomorrow}
+              isToday={false}
+              now={now}
+              areasById={areasById}
+              blocks={blocksByDate.get(tomorrow) ?? []}
+              onAddRoutine={setRoutineDate}
+              onDelete={(blockId) => {
+                const block = schedule.blocks.find((candidate) => candidate.id === blockId)
+                if (block) {
+                  setBlockToDelete(block)
+                  setDeleteError(null)
+                }
+              }}
+              onOpen={setBlockToEdit}
+              onToggleComplete={(block) => { void handleToggleComplete(block) }}
+              onMaximize={setMaximizedDate}
+            />
+          </div>
+
+          {/* 3. DÍAS SIGUIENTES: En orden horizontal debajo de Mañana, con lista de pendientes y click para maximizar */}
+          <div className="flex flex-col gap-3 pt-2">
+            <div className="flex items-center justify-between gap-2 px-1">
+              <div className="flex items-center gap-2">
+                <CalendarDays className="size-4 text-accent" aria-hidden="true" />
+                <h3 className="text-sm font-semibold tracking-tight text-ink">
+                  Próximos días
+                </h3>
+              </div>
+              <p className="text-xs text-ink-muted">
+                Haz clic en cualquier día para maximizarlo y organizar sus horas
+              </p>
             </div>
-          ))}
+
+            <div className="flex gap-4 overflow-x-auto pb-3 pt-1 scroll-pl-1 sm:scroll-pl-2 snap-x snap-proximity overscroll-x-contain">
+              {upcomingDays.map((date) => (
+                <UpcomingDayCard
+                  key={date}
+                  date={date}
+                  blocks={blocksByDate.get(date) ?? []}
+                  areasById={areasById}
+                  onAddRoutine={setRoutineDate}
+                  onDelete={(blockId) => {
+                    const block = schedule.blocks.find((candidate) => candidate.id === blockId)
+                    if (block) {
+                      setBlockToDelete(block)
+                      setDeleteError(null)
+                    }
+                  }}
+                  onOpen={setBlockToEdit}
+                  onToggleComplete={(block) => { void handleToggleComplete(block) }}
+                  onMaximize={setMaximizedDate}
+                />
+              ))}
+            </div>
+          </div>
         </div>
       )}
+
+      {/* Modal de día maximizado para organizar horarios con máxima precisión */}
+      <DayMaximizedModal
+        open={maximizedDate !== null}
+        date={maximizedDate}
+        now={now}
+        blocks={maximizedDate ? blocksByDate.get(maximizedDate) ?? [] : []}
+        areasById={areasById}
+        onClose={() => setMaximizedDate(null)}
+        onNavigateDate={setMaximizedDate}
+        onAddRoutine={setRoutineDate}
+        onDelete={(blockId) => {
+          const block = schedule.blocks.find((candidate) => candidate.id === blockId)
+          if (block) {
+            setBlockToDelete(block)
+            setDeleteError(null)
+          }
+        }}
+        onOpen={setBlockToEdit}
+        onToggleComplete={(block) => { void handleToggleComplete(block) }}
+      />
 
       <BlockModal
         block={blockToEdit}

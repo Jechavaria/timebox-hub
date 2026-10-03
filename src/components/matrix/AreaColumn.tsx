@@ -66,7 +66,7 @@ export function AreaColumn({ area, tasks, areaActions, taskActions }: AreaColumn
         style={sortableStyle}
         aria-labelledby={headingId}
         className={clsx(
-          'glass-panel flex h-full max-h-full min-h-0 w-[min(86vw,21rem)] shrink-0 snap-start flex-col overflow-hidden sm:w-[min(42vw,22rem)] lg:w-[22rem]',
+          'glass-panel flex min-h-[300px] w-[min(86vw,21rem)] shrink-0 snap-start flex-col sm:w-[min(42vw,22rem)] lg:w-[22rem]',
           isDragging && 'ring-3 ring-accent/60',
         )}
       >
@@ -128,7 +128,7 @@ export function AreaColumn({ area, tasks, areaActions, taskActions }: AreaColumn
         {error ? <p role="alert" className="shrink-0 px-3 py-2 text-xs text-danger">{error}</p> : null}
         <NewTaskInline areaId={area.id} onCreate={taskActions.createTask} />
         <SortableContext items={tasks.map((task) => `task:${task.id}`)} strategy={verticalListSortingStrategy}>
-          <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto overscroll-contain p-2.5">
+          <div className="flex flex-1 flex-col gap-2 p-2.5">
             {tasks.length > 0 ? (
               tasks.map((task) => (
                 <TaskBlock
@@ -140,8 +140,8 @@ export function AreaColumn({ area, tasks, areaActions, taskActions }: AreaColumn
                 />
               ))
             ) : (
-              <div className="grid min-h-28 flex-1 place-items-center rounded-2xl border border-dashed border-glass-border p-4 text-center">
-                <p className="text-sm text-ink-faint">Añade tareas a este ámbito para empezar.</p>
+              <div className="grid min-h-36 flex-1 place-items-center rounded-2xl border border-dashed border-glass-border/60 p-6 text-center">
+                <p className="text-sm leading-relaxed text-ink-muted">Añade tareas a este ámbito para empezar.</p>
               </div>
             )}
           </div>

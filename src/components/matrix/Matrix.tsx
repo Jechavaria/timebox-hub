@@ -45,7 +45,7 @@ export function Matrix() {
     <GlassPanel
       as="section"
       aria-labelledby="matrix-heading"
-      className="flex min-h-0 flex-1 flex-col overflow-hidden"
+      className="flex flex-col"
     >
       <header className="flex shrink-0 items-center justify-between gap-3 border-b border-glass-border px-4 py-3 sm:px-6">
         <div className="flex min-w-0 items-center gap-3">
@@ -116,7 +116,7 @@ export function Matrix() {
         </div>
       ) : (
         <SortableContext items={visibleAreas.map((area) => `area:${area.id}`)} strategy={horizontalListSortingStrategy}>
-          <div className="flex min-h-0 flex-1 snap-x snap-mandatory gap-4 overflow-x-auto overscroll-x-contain p-4 sm:p-5">
+          <div className="flex gap-4 overflow-x-auto overscroll-x-contain p-4 sm:p-5 scroll-pl-4 sm:scroll-pl-5 scroll-pr-4 sm:scroll-pr-5 snap-x snap-proximity">
             {visibleAreas.map((area) => (
               <AreaColumn
                 key={area.id}

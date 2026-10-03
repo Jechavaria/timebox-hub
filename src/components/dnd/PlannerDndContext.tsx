@@ -188,6 +188,9 @@ export function PlannerDndContext({ children }: PlannerDndContextProps) {
     const startMinutes = target.type === 'day-untimed'
       ? null
       : getDropStartMinutes(event, target.date, source.durationMinutes)
+    if (task.is_completed) {
+      void planner.tasks.updateTask(task.id, { is_completed: false })
+    }
     const result = await planner.schedule.cloneTaskToBlock(task, target.date, startMinutes)
     if (!result.ok) {
       toast.error(result.message, 'No se pudo añadir a la planificación diaria')

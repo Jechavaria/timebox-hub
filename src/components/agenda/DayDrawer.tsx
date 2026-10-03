@@ -1,5 +1,5 @@
 import clsx from 'clsx'
-import { Clock3, Sparkles } from 'lucide-react'
+import { Clock3, Maximize2, Sparkles } from 'lucide-react'
 import { useDroppable } from '@dnd-kit/core'
 import type { Area, LocalDateString, ScheduleBlock } from '../../types/domain.ts'
 import { addDays, formatDateShort, parseLocalDate, toLocalDateString } from '../../lib/time.ts'
@@ -17,6 +17,7 @@ interface DayDrawerProps {
   onDelete: (blockId: string) => void
   onOpen: (block: ScheduleBlock) => void
   onToggleComplete: (block: ScheduleBlock) => void
+  onMaximize?: (date: LocalDateString) => void
 }
 
 export function DayDrawer({
@@ -29,6 +30,7 @@ export function DayDrawer({
   onDelete,
   onOpen,
   onToggleComplete,
+  onMaximize,
 }: DayDrawerProps) {
   const { isOver, setNodeRef } = useDroppable({
     id: `day:${date}`,
@@ -51,19 +53,42 @@ export function DayDrawer({
     <section
       aria-label={`${isToday ? 'Hoy' : dateLabel}, ${blocks.length} bloques`}
       className={clsx(
-        'glass-panel flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden',
-        isOver && 'ring-2 ring-accent/50',
+        'glass-panel flex w-full flex-col overflow-hidden transition-all duration-200',
+        isOver && 'ring-2 ring-accent/60',
       )}
     >
-      <header className="flex min-h-14 shrink-0 items-center gap-2 border-b border-glass-border px-3 py-2">
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <h3 className="text-sm font-semibold text-ink">{dayTitle}</h3>
-            {isToday ? <span className="size-2 rounded-full bg-success shadow-[0_0_8px_rgb(95_217_160_/_0.6)]" /> : null}
+      <header className="flex min-h-14 shrink-0 items-center justify-between gap-2 border-b border-glass-border px-4 py-2.5">
+        <button
+          type="button"
+          onClick={() => onMaximize?.(date)}
+          className="group flex min-w-0 flex-1 items-center gap-2 text-left"
+          title={`Maximizar ${dayTitle} con detalle de horas`}
+        >
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <h3 className="text-sm font-bold tracking-tight text-ink transition-colors group-hover:text-accent sm:text-base">
+                {dayTitle}
+              </h3>
+              {isToday ? <span className="size-2.5 rounded-full bg-success shadow-[0_0_10px_rgb(95_217_160_/_0.7)]" /> : null}
+              <Maximize2 className="size-4 shrink-0 text-ink-faint opacity-50 transition-all group-hover:opacity-100 group-hover:text-accent" />
+            </div>
+            <p className="truncate text-xs capitalize text-ink-muted">
+              {dateLabel} · {blocks.length} {blocks.length === 1 ? 'bloque' : 'bloques'} ({timedCount} con hora)
+            </p>
           </div>
-          <p className="truncate text-xs capitalize text-ink-muted">{dateLabel} · {timedCount} con hora</p>
-        </div>
-        <div className="flex shrink-0 items-center gap-1">
+        </button>
+
+        <div className="flex shrink-0 items-center gap-1.5">
+          {onMaximize ? (
+            <IconButton
+              label={`Maximizar ${dayTitle} con detalle de horas`}
+              size="sm"
+              variant="glass"
+              onClick={() => onMaximize(date)}
+            >
+              <Maximize2 className="size-4" />
+            </IconButton>
+          ) : null}
           <IconButton
             label={`Agregar rutina a ${dayTitle}`}
             size="sm"
@@ -80,7 +105,8 @@ export function DayDrawer({
         </div>
       </header>
 
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+      {/* Vista de horas alargada y clara para planificación detallada */}
+      <div className="h-[460px] overflow-y-auto overscroll-contain sm:h-[520px]">
         <TimelineBoard
           date={date}
           blocks={blocks}

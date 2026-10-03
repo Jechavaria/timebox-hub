@@ -24,16 +24,25 @@ export function usePointerLight(): void {
     let frame = 0
     let pointerX = -9999
     let pointerY = -9999
+    let lastX = -9999
+    let lastY = -9999
     let hovered: HTMLElement | null = null
     let pressTimer = 0
 
     const flush = () => {
       frame = 0
-      root.style.setProperty('--pointer-x', `${pointerX}px`)
-      root.style.setProperty('--pointer-y', `${pointerY}px`)
+      // Evitar reflujo si el puntero se movió menos de 2px
+      if (Math.abs(pointerX - lastX) >= 2 || Math.abs(pointerY - lastY) >= 2) {
+        lastX = pointerX
+        lastY = pointerY
+        root.style.setProperty('--pointer-x', `${pointerX}px`)
+        root.style.setProperty('--pointer-y', `${pointerY}px`)
+      }
     }
 
     const schedule = (event: PointerEvent) => {
+      // Ignorar toques táctiles directos para no degradar el scroll en móviles
+      if (event.pointerType === 'touch') return
       pointerX = event.clientX
       pointerY = event.clientY
       if (!frame) frame = requestAnimationFrame(flush)
@@ -63,6 +72,12 @@ export function usePointerLight(): void {
       if (!event.relatedTarget) setHovered(null)
     }
 
+    const handleLeave = () => {
+      setHovered(null)
+      root.style.setProperty('--pointer-x', '-9999px')
+      root.style.setProperty('--pointer-y', '-9999px')
+    }
+
     const handleDown = (event: PointerEvent) => {
       schedule(event)
       const element = findInteractive(event.target)
@@ -86,12 +101,14 @@ export function usePointerLight(): void {
     document.addEventListener('pointerover', handleOver, { passive: true })
     document.addEventListener('pointerout', handleOut, { passive: true })
     document.addEventListener('pointerdown', handleDown, { passive: true })
+    document.addEventListener('mouseleave', handleLeave)
 
     return () => {
       document.removeEventListener('pointermove', handleMove)
       document.removeEventListener('pointerover', handleOver)
       document.removeEventListener('pointerout', handleOut)
       document.removeEventListener('pointerdown', handleDown)
+      document.removeEventListener('mouseleave', handleLeave)
       if (frame) cancelAnimationFrame(frame)
       window.clearTimeout(pressTimer)
       delete root.dataset.glow
