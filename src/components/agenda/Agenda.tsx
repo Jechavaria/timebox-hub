@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react'
-import { Calendar, RotateCw, Trash2 } from 'lucide-react'
+import clsx from 'clsx'
+import { Calendar, CalendarDays, Columns2, RotateCw, Trash2 } from 'lucide-react'
 import { AGENDA_WINDOW_DAYS } from '../../lib/constants.ts'
 import { getWeekDates, toLocalDateString } from '../../lib/time.ts'
 import { useNow } from '../../hooks/useNow.ts'
 import { usePlanner } from '../../hooks/usePlanner.ts'
 import { useToast } from '../../hooks/useToast.ts'
-import type { MutationResult, ScheduleBlock } from '../../types/domain.ts'
+import type { AgendaView, MutationResult, ScheduleBlock } from '../../types/domain.ts'
 import { Button } from '../ui/Button.tsx'
 import { GlassPanel } from '../ui/GlassPanel.tsx'
 import { IconButton } from '../ui/IconButton.tsx'
@@ -15,18 +16,30 @@ import { BlockModal } from '../task/BlockModal.tsx'
 import { CompleteBlockDialog } from '../task/CompleteBlockDialog.tsx'
 import { DayDrawer } from './DayDrawer.tsx'
 
+const AGENDA_VIEW_STORAGE_KEY = 'timebox_agenda_view'
+
 export function Agenda() {
   const { areas, tasks, schedule } = usePlanner()
   const toast = useToast()
   const now = useNow({ intervalMs: 15_000 })
   const today = toLocalDateString(now)
+  const [view, setView] = useState<AgendaView>(() => {
+    const saved = localStorage.getItem(AGENDA_VIEW_STORAGE_KEY)
+    return saved === 'week' ? 'week' : 'today-tomorrow'
+  })
   const [blockToEdit, setBlockToEdit] = useState<ScheduleBlock | null>(null)
   const [blockToComplete, setBlockToComplete] = useState<ScheduleBlock | null>(null)
   const [blockToDelete, setBlockToDelete] = useState<ScheduleBlock | null>(null)
   const [savingDelete, setSavingDelete] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
 
+  const handleViewChange = (nextView: AgendaView) => {
+    setView(nextView)
+    localStorage.setItem(AGENDA_VIEW_STORAGE_KEY, nextView)
+  }
+
   const days = useMemo(() => getWeekDates(today, AGENDA_WINDOW_DAYS), [today])
+  const visibleDays = useMemo(() => (view === 'today-tomorrow' ? days.slice(0, 2) : days), [days, view])
   const areasById = useMemo(() => new Map(areas.areas.map((area) => [area.id, area])), [areas.areas])
   const blocksByDate = useMemo(() => {
     const grouped = new Map<string, ScheduleBlock[]>()
@@ -134,15 +147,57 @@ export function Agenda() {
               Agenda
             </h2>
             <p className="truncate text-xs text-ink-muted">
-              Hoy, mañana y los siguientes días organizados en orden cronológico
+              {view === 'today-tomorrow' ? 'Enfoque inmediato: Hoy y Mañana' : 'Vista proyectada de 7 días'}
             </p>
           </div>
         </div>
-        {schedule.error ? (
-          <IconButton label="Reintentar carga de agenda" size="sm" onClick={() => { void schedule.refresh() }}>
-            <RotateCw />
-          </IconButton>
-        ) : null}
+
+        <div className="flex shrink-0 items-center gap-2">
+          <div
+            role="tablist"
+            aria-label="Modo de vista de agenda"
+            className="flex shrink-0 items-center rounded-xl border border-glass-border bg-glass p-0.5"
+          >
+            <button
+              type="button"
+              role="tab"
+              aria-selected={view === 'today-tomorrow'}
+              onClick={() => handleViewChange('today-tomorrow')}
+              className={clsx(
+                'flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition-all duration-150',
+                view === 'today-tomorrow'
+                  ? 'bg-accent text-white shadow-sm'
+                  : 'text-ink-muted hover:text-ink hover:bg-white/5',
+              )}
+            >
+              <Columns2 className="size-3.5" aria-hidden="true" />
+              <span className="hidden sm:inline">Hoy y Mañana</span>
+              <span className="sm:hidden">2 Días</span>
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={view === 'week'}
+              onClick={() => handleViewChange('week')}
+              className={clsx(
+                'flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition-all duration-150',
+                view === 'week'
+                  ? 'bg-accent text-white shadow-sm'
+                  : 'text-ink-muted hover:text-ink hover:bg-white/5',
+              )}
+            >
+              <CalendarDays className="size-3.5" aria-hidden="true" />
+              <span className="hidden sm:inline">Semana (7 días)</span>
+              <span className="sm:hidden">7 Días</span>
+            </button>
+          </div>
+
+          {schedule.error ? (
+            <IconButton label="Reintentar carga de agenda" size="sm" onClick={() => { void schedule.refresh() }}>
+              <RotateCw />
+            </IconButton>
+          ) : null}
+        </div>
       </header>
 
       {schedule.error ? (
@@ -153,9 +208,21 @@ export function Agenda() {
         <div className="grid min-h-0 flex-1 place-items-center">
           <Spinner label="Cargando agenda" />
         </div>
+      ) : view === 'today-tomorrow' ? (
+        <div className="flex md:grid md:grid-cols-2 h-full min-h-0 flex-1 gap-3 sm:gap-4 overflow-x-auto md:overflow-hidden snap-x snap-mandatory p-3 sm:p-4">
+          {visibleDays.map((date, index) => (
+            <div key={date} className="w-[88vw] sm:w-[360px] md:w-auto shrink-0 md:shrink snap-start h-full min-h-0">
+              {renderDay(date, index)}
+            </div>
+          ))}
+        </div>
       ) : (
-        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overscroll-y-contain p-3 sm:gap-6 sm:p-6">
-          {days.map(renderDay)}
+        <div className="flex h-full min-h-0 flex-1 gap-3 sm:gap-4 overflow-x-auto snap-x snap-mandatory p-3 sm:p-4">
+          {visibleDays.map((date, index) => (
+            <div key={date} className="w-[85vw] max-w-[340px] sm:w-[320px] md:w-[350px] shrink-0 snap-start h-full min-h-0">
+              {renderDay(date, index)}
+            </div>
+          ))}
         </div>
       )}
 
