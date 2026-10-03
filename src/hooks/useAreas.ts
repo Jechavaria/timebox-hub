@@ -22,7 +22,7 @@ const REQUEST_ERROR = 'No fue posible sincronizar los ámbitos. Comprueba tu con
 const MUTATION_ERROR = 'No fue posible guardar el cambio. Comprueba tu conexión y vuelve a intentarlo.'
 
 function sortAreas(areas: Area[]): Area[] {
-  return [...areas].sort((a, b) => a.position - b.position || a.created_at.localeCompare(b.created_at))
+  return [...areas].sort((a, b) => a.position - b.position || (a.created_at ?? '').localeCompare(b.created_at ?? ''))
 }
 
 function upsertArea(areas: Area[], next: Area): Area[] {

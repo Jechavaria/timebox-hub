@@ -29,7 +29,7 @@ function sortTasks(tasks: MasterTask[]): MasterTask[] {
     (a, b) =>
       a.area_id.localeCompare(b.area_id) ||
       a.priority_order - b.priority_order ||
-      a.created_at.localeCompare(b.created_at),
+      (a.created_at ?? '').localeCompare(b.created_at ?? ''),
   )
 }
 

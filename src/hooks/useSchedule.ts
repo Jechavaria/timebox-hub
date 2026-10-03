@@ -45,7 +45,7 @@ function sortBlocks(blocks: ScheduleBlock[]): ScheduleBlock[] {
     (a, b) =>
       a.scheduled_date.localeCompare(b.scheduled_date) ||
       (a.start_time ?? '99:99').localeCompare(b.start_time ?? '99:99') ||
-      a.created_at.localeCompare(b.created_at),
+      (a.created_at ?? '').localeCompare(b.created_at ?? ''),
   )
 }
 
