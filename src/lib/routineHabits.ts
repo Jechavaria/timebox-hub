@@ -204,6 +204,25 @@ export function parseBlockStatus(block: Pick<ScheduleBlock, 'notes' | 'is_comple
     }
   }
 
+  // Fallback a targetMetric si no se especificó metricProgress explícito
+  if (!metricQuantity && targetMetric) {
+    const numMatch = targetMetric.match(/(\d+(?:\.\d+)?)\s*(.*)/)
+    if (numMatch) {
+      metricQuantity = Number(numMatch[1])
+      metricUnit = numMatch[2]?.trim() || ''
+    }
+  }
+
+  // Fallback inteligente para plantillas y hábitos conocidos basados en texto
+  if (!metricQuantity) {
+    const textLower = notes.toLowerCase()
+    const numInText = textLower.match(/(\d+(?:\.\d+)?)\s*(páginas?|paginas?|pags?|lección|leccion|lecciones|km|kms|kilómetros|kilometros|capítulos?|capitulos?|minutos?|mins?|commits?)/i)
+    if (numInText) {
+      metricQuantity = Number(numInText[1])
+      metricUnit = numInText[2].toLowerCase()
+    }
+  }
+
   // Notas limpias removiendo las etiquetas del sistema
   const cleanNotes = notes
     .replace(STATUS_TAG_REGEX, '')

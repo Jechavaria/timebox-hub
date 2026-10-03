@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Download, ExternalLink, FileSpreadsheet, FileText, LoaderCircle, Music2, X } from 'lucide-react'
+import { Download, ExternalLink, FileSpreadsheet, FileText, LoaderCircle, Music2, Presentation, X } from 'lucide-react'
 import type { TaskFile } from '../../types/domain.ts'
 import { formatBytes } from '../../lib/files.ts'
 import { Button } from '../ui/Button.tsx'
@@ -168,25 +168,98 @@ export function FilePreviewModal({
             )}
           </div>
         ) : (
-          <div className="flex flex-col items-center gap-3 p-8 text-center">
-            <div className="grid size-16 place-items-center rounded-2xl bg-white/10 text-ink">
-              {file.file_type.includes('spreadsheet') || file.file_name.endsWith('.xlsx') || file.file_name.endsWith('.xlsm') ? (
-                <FileSpreadsheet className="size-8 text-emerald-400" />
-              ) : (
-                <FileText className="size-8 text-accent" />
-              )}
-            </div>
-            <div>
-              <p className="font-medium text-ink">{file.file_name}</p>
-              <p className="text-xs text-ink-muted">
-                Este formato ({file.file_type || 'archivo binario'}) requiere descargarse para abrirlo con su aplicación correspondiente (Excel, Word, software CAD, etc.).
-              </p>
-            </div>
-            <Button variant="primary" onClick={() => onDownload(file)} className="mt-2">
-              <Download className="size-4" />
-              Descargar archivo ({formatBytes(file.file_size)})
-            </Button>
-          </div>
+          (() => {
+            const isOfficeDoc = Boolean(
+              file.file_name.endsWith('.docx') ||
+              file.file_name.endsWith('.doc') ||
+              file.file_name.endsWith('.xlsx') ||
+              file.file_name.endsWith('.xls') ||
+              file.file_name.endsWith('.pptx') ||
+              file.file_name.endsWith('.ppt') ||
+              file.file_type.includes('spreadsheet') ||
+              file.file_type.includes('wordprocessingml') ||
+              file.file_type.includes('presentationml')
+            )
+            const isSpreadsheet = file.file_name.endsWith('.xlsx') || file.file_name.endsWith('.xls') || file.file_type.includes('spreadsheet')
+            const isPresentation = file.file_name.endsWith('.pptx') || file.file_name.endsWith('.ppt')
+            const googleViewerUrl = previewUrl ? `https://docs.google.com/viewer?url=${encodeURIComponent(previewUrl)}` : null
+            const officeViewerUrl = previewUrl ? `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(previewUrl)}` : null
+
+            return (
+              <div className="flex max-w-md flex-col items-center gap-3 p-6 text-center">
+                <div className="grid size-16 place-items-center rounded-2xl bg-white/10 text-ink shadow-sm">
+                  {isSpreadsheet ? (
+                    <FileSpreadsheet className="size-8 text-emerald-400" />
+                  ) : isPresentation ? (
+                    <Presentation className="size-8 text-amber-400" />
+                  ) : (
+                    <FileText className="size-8 text-accent" />
+                  )}
+                </div>
+
+                <div>
+                  <p className="font-semibold text-base text-ink">{file.file_name}</p>
+                  <p className="text-xs text-ink-muted mt-0.5">
+                    {formatBytes(file.file_size)} · {isOfficeDoc ? 'Documento de Office / Hoja de cálculo' : file.file_type || 'Archivo binario'}
+                  </p>
+                </div>
+
+                {isOfficeDoc ? (
+                  <div className="flex flex-col gap-2.5 w-full pt-1">
+                    <div className="flex flex-col sm:flex-row gap-2 justify-center w-full">
+                      {googleViewerUrl ? (
+                        <a
+                          href={googleViewerUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center justify-center gap-1.5 rounded-xl border border-blue-500/40 bg-blue-500/15 px-3 py-2 text-xs font-semibold text-blue-300 hover:border-blue-400 hover:bg-blue-500/25 transition-all cursor-pointer shadow-sm"
+                        >
+                          <ExternalLink className="size-3.5" />
+                          <span>Ver en Google Docs Viewer</span>
+                        </a>
+                      ) : null}
+
+                      {officeViewerUrl ? (
+                        <a
+                          href={officeViewerUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center justify-center gap-1.5 rounded-xl border border-amber-500/40 bg-amber-500/15 px-3 py-2 text-xs font-semibold text-amber-300 hover:border-amber-400 hover:bg-amber-500/25 transition-all cursor-pointer shadow-sm"
+                        >
+                          <ExternalLink className="size-3.5" />
+                          <span>Ver en Office Online</span>
+                        </a>
+                      ) : null}
+                    </div>
+
+                    <div className="rounded-xl border border-blue-500/20 bg-blue-500/10 p-2.5 text-left text-xs text-blue-300/90 leading-snug">
+                      <p className="font-semibold text-blue-200 flex items-center gap-1 mb-0.5">
+                        💡 ¿Quieres editar en vivo sin descargar y resubir?
+                      </p>
+                      <p className="text-[11px]">
+                        Puedes adjuntar un enlace de <strong>Google Docs</strong> o <strong>Google Sheets</strong> a esta tarea. Google guarda los cambios automáticamente en la nube en tiempo real.
+                      </p>
+                    </div>
+
+                    <Button variant="secondary" onClick={() => onDownload(file)} className="mt-1">
+                      <Download className="size-4" />
+                      Descargar archivo local ({formatBytes(file.file_size)})
+                    </Button>
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-xs text-ink-muted">
+                      Este formato requiere descargarse para abrirlo con su aplicación correspondiente en tu dispositivo.
+                    </p>
+                    <Button variant="primary" onClick={() => onDownload(file)} className="mt-2">
+                      <Download className="size-4" />
+                      Descargar archivo ({formatBytes(file.file_size)})
+                    </Button>
+                  </>
+                )}
+              </div>
+            )
+          })()
         )}
       </div>
     </Modal>

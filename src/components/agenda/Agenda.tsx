@@ -282,14 +282,18 @@ export function Agenda() {
         tasks={tasks.tasks}
         areas={areas.areas}
         onClose={() => setSlotToSchedule(null)}
-        onSelectTask={async (task, date, startMinutes) => {
-          const result = await schedule.cloneTaskToBlock(task, date, startMinutes)
+        onSelectTask={async (task, date, startMinutes, recurrence) => {
+          const result = await schedule.cloneTaskToBlock(task, date, startMinutes, recurrence)
           if (result.ok) {
-            toast.success(
-              startMinutes !== null
-                ? `“${task.title}” planificada para ${date}.`
-                : `“${task.title}” añadida a Sin hora.`,
-            )
+            if (recurrence && recurrence.frequency !== 'none') {
+              toast.success(`“${task.title}” programada repetitivamente en tu agenda.`)
+            } else {
+              toast.success(
+                startMinutes !== null
+                  ? `“${task.title}” planificada para ${date}.`
+                  : `“${task.title}” añadida a Sin hora.`,
+              )
+            }
           } else {
             toast.error(result.message, 'No se pudo planificar')
           }
@@ -302,9 +306,13 @@ export function Agenda() {
               area_id: input.areaId ?? areas.areas[0]?.id,
             })
             if (!taskResult.ok) return taskResult
-            const blockResult = await schedule.cloneTaskToBlock(taskResult.data, input.date, input.startMinutes)
+            const blockResult = await schedule.cloneTaskToBlock(taskResult.data, input.date, input.startMinutes, input.recurrence)
             if (blockResult.ok) {
-              toast.success(`“${input.title}” guardada y añadida a la agenda.`)
+              if (input.recurrence && input.recurrence.frequency !== 'none') {
+                toast.success(`“${input.title}” guardada y programada repetitivamente en la agenda.`)
+              } else {
+                toast.success(`“${input.title}” guardada y añadida a la agenda.`)
+              }
             }
             return blockResult
           } else {
@@ -314,9 +322,13 @@ export function Agenda() {
               plannedDurationMinutes: input.duration,
               startTime: input.startMinutes !== null ? minutesToTime(input.startMinutes) : null,
               areaId: input.areaId,
-            })
+            }, input.recurrence)
             if (routineResult.ok) {
-              toast.success(`Rutina “${input.title}” añadida a la agenda.`)
+              if (input.recurrence && input.recurrence.frequency !== 'none') {
+                toast.success(`Rutina repetitiva “${input.title}” programada en la agenda.`)
+              } else {
+                toast.success(`Rutina “${input.title}” añadida a la agenda.`)
+              }
             }
             return routineResult
           }
@@ -336,10 +348,14 @@ export function Agenda() {
       <RoutineModal
         date={routineDate}
         onClose={() => setRoutineDate(null)}
-        onSave={async (input) => {
-          const result = await schedule.createRoutineBlock(input)
+        onSave={async (input, recurrence) => {
+          const result = await schedule.createRoutineBlock(input, recurrence)
           if (result.ok) {
-            toast.success(`Rutina “${result.data.title}” agregada a la planificación diaria.`)
+            if (recurrence && recurrence.frequency !== 'none') {
+              toast.success(`Rutina repetitiva “${result.data.title}” programada en la planificación diaria.`)
+            } else {
+              toast.success(`Rutina “${result.data.title}” agregada a la planificación diaria.`)
+            }
           }
           return result
         }}

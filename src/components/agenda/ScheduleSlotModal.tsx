@@ -7,6 +7,9 @@ import { Button } from '../ui/Button.tsx'
 import { DurationPicker } from '../ui/DurationPicker.tsx'
 import { Modal } from '../ui/Modal.tsx'
 
+import { RecurrenceSelector } from '../ui/RecurrenceSelector.tsx'
+import type { RecurrenceRule } from '../../lib/recurrence.ts'
+
 interface ScheduleSlotModalProps {
   open: boolean
   date: LocalDateString | null
@@ -14,7 +17,12 @@ interface ScheduleSlotModalProps {
   tasks: MasterTask[]
   areas: Area[]
   onClose: () => void
-  onSelectTask: (task: MasterTask, date: LocalDateString, startMinutes: number | null) => Promise<void>
+  onSelectTask: (
+    task: MasterTask,
+    date: LocalDateString,
+    startMinutes: number | null,
+    recurrence?: RecurrenceRule,
+  ) => Promise<void>
   onCreateNew: (input: {
     title: string
     duration: number
@@ -22,6 +30,7 @@ interface ScheduleSlotModalProps {
     date: LocalDateString
     startMinutes: number | null
     saveToBacklog: boolean
+    recurrence?: RecurrenceRule
   }) => Promise<MutationResult<ScheduleBlock>>
 }
 
@@ -38,6 +47,7 @@ export function ScheduleSlotModal({
   const [tab, setTab] = useState<'existing' | 'new'>('existing')
   const [search, setSearch] = useState('')
   const [selectedAreaId, setSelectedAreaId] = useState<string>('all')
+  const [recurrence, setRecurrence] = useState<RecurrenceRule>({ frequency: 'none' })
 
   // Estado para nueva tarea
   const [newTitle, setNewTitle] = useState('')
@@ -75,8 +85,9 @@ export function ScheduleSlotModal({
   const handlePickTask = async (task: MasterTask) => {
     setSubmitting(true)
     setError(null)
-    await onSelectTask(task, date, startMinutes)
+    await onSelectTask(task, date, startMinutes, recurrence)
     setSubmitting(false)
+    setRecurrence({ frequency: 'none' })
     onClose()
   }
 
@@ -96,6 +107,7 @@ export function ScheduleSlotModal({
       date,
       startMinutes,
       saveToBacklog,
+      recurrence,
     })
     setSubmitting(false)
     if (!result.ok) {
@@ -103,6 +115,7 @@ export function ScheduleSlotModal({
       return
     }
     setNewTitle('')
+    setRecurrence({ frequency: 'none' })
     onClose()
   }
 
@@ -190,8 +203,15 @@ export function ScheduleSlotModal({
               ) : null}
             </div>
 
+            <RecurrenceSelector
+              baseDate={date}
+              value={recurrence}
+              onChange={setRecurrence}
+              disabled={submitting}
+            />
+
             {/* Lista de tareas pendientes para elegir */}
-            <div className="max-h-72 overflow-y-auto flex flex-col gap-1.5 pr-1">
+            <div className="max-h-64 overflow-y-auto flex flex-col gap-1.5 pr-1">
               {eligibleTasks.length === 0 ? (
                 <div className="rounded-xl border border-dashed border-glass-border p-6 text-center text-sm text-ink-faint">
                   {search ? 'No se encontraron tareas con ese nombre.' : 'No tienes tareas pendientes disponibles.'}
@@ -277,6 +297,13 @@ export function ScheduleSlotModal({
                 </select>
               </div>
             ) : null}
+
+            <RecurrenceSelector
+              baseDate={date}
+              value={recurrence}
+              onChange={setRecurrence}
+              disabled={submitting}
+            />
 
             <label className="flex items-center gap-2.5 rounded-xl border border-glass-border bg-glass p-3 text-xs text-ink cursor-pointer">
               <input

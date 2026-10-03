@@ -6,6 +6,12 @@ import { createUuid } from '../lib/ids.ts'
 import { resolveStack } from '../lib/timeline.ts'
 import { addDays, minutesToTime, timeToMinutes } from '../lib/time.ts'
 import { supabase } from '../lib/supabase.ts'
+import {
+  calculateRecurringDates,
+  describeRecurrenceRule,
+  formatNotesWithRecurrence,
+  type RecurrenceRule,
+} from '../lib/recurrence.ts'
 import type {
   CreateRoutineBlockInput,
   LocalDateString,
@@ -25,8 +31,22 @@ export interface UseScheduleResult {
     task: MasterTask,
     scheduledDate: LocalDateString,
     startMinutes: number | null,
+    recurrence?: RecurrenceRule,
   ) => Promise<MutationResult<ScheduleBlock>>
-  createRoutineBlock: (input: CreateRoutineBlockInput) => Promise<MutationResult<ScheduleBlock>>
+  createRoutineBlock: (
+    input: CreateRoutineBlockInput,
+    recurrence?: RecurrenceRule,
+  ) => Promise<MutationResult<ScheduleBlock>>
+  cloneTaskToRecurringBlocks: (
+    task: MasterTask,
+    scheduledDate: LocalDateString,
+    startMinutes: number | null,
+    recurrence: RecurrenceRule,
+  ) => Promise<MutationResult<ScheduleBlock[]>>
+  createRoutineRecurringBlocks: (
+    input: CreateRoutineBlockInput,
+    recurrence: RecurrenceRule,
+  ) => Promise<MutationResult<ScheduleBlock[]>>
   moveBlock: (
     blockId: string,
     scheduledDate: LocalDateString,
@@ -229,13 +249,68 @@ export function useSchedule(): UseScheduleResult {
     [blocks, userId],
   )
 
-  const cloneTaskToBlock = useCallback<UseScheduleResult['cloneTaskToBlock']>(
-    async (task, scheduledDate, startMinutes) => {
+  const cloneTaskToRecurringBlocks = useCallback<UseScheduleResult['cloneTaskToRecurringBlocks']>(
+    async (task, scheduledDate, startMinutes, recurrence) => {
+      if (!userId) return { ok: false, message: 'Inicia sesión para planificar tareas.' }
       if (startMinutes !== null && (!Number.isFinite(startMinutes) || startMinutes < 0 || startMinutes >= 1440)) {
         return { ok: false, message: OUTSIDE_DAY_ERROR }
       }
 
-      // En la agenda diaria, un bloque debe durar al menos 15 minutos (por defecto 30 si la tarea no tenía tiempo estimado)
+      const duration = Math.max(15, Math.min(1440, task.estimated_duration_minutes || 30))
+      const dates = calculateRecurringDates(scheduledDate, recurrence)
+      const repeatDesc = recurrence.frequency !== 'none' ? describeRecurrenceRule(recurrence, scheduledDate) : ''
+
+      const newBlocks: ScheduleBlock[] = dates.map((date) => ({
+        id: createUuid(),
+        user_id: userId,
+        master_task_id: task.id,
+        area_id: task.area_id,
+        title: task.title,
+        notes: repeatDesc ? formatNotesWithRecurrence('', repeatDesc) : '',
+        scheduled_date: date,
+        start_time: startMinutes !== null ? minutesToTime(startMinutes) : null,
+        planned_duration_minutes: duration,
+        actual_duration_minutes: null,
+        is_completed: false,
+        is_routine: false,
+        created_at: new Date().toISOString(),
+      }))
+
+      try {
+        const { data, error: upsertError } = await supabase
+          .from('schedule_blocks')
+          .upsert(newBlocks)
+          .select('*')
+        if (upsertError) throw upsertError
+
+        const savedBlocks = data && data.length > 0 ? (data as ScheduleBlock[]) : newBlocks
+        const visibleBlocks = savedBlocks.filter((b) => b.scheduled_date >= today && b.scheduled_date <= windowEnd)
+        if (visibleBlocks.length > 0) {
+          setBlocks((current) => mergeBlocks(current, visibleBlocks))
+        }
+
+        return { ok: true, data: savedBlocks }
+      } catch (err) {
+        console.error('Error al guardar bloques recurrentes:', err)
+        const message = (err as { message?: string })?.message || MUTATION_ERROR
+        return { ok: false, message }
+      }
+    },
+    [today, userId, windowEnd],
+  )
+
+  const cloneTaskToBlock = useCallback<UseScheduleResult['cloneTaskToBlock']>(
+    async (task, scheduledDate, startMinutes, recurrence) => {
+      if (recurrence && recurrence.frequency !== 'none') {
+        const res = await cloneTaskToRecurringBlocks(task, scheduledDate, startMinutes, recurrence)
+        if (!res.ok) return { ok: false, message: res.message }
+        return { ok: true, data: res.data[0] }
+      }
+
+      if (startMinutes !== null && (!Number.isFinite(startMinutes) || startMinutes < 0 || startMinutes >= 1440)) {
+        return { ok: false, message: OUTSIDE_DAY_ERROR }
+      }
+
       const duration = Math.max(15, Math.min(1440, task.estimated_duration_minutes || 30))
 
       const original: ScheduleBlock = {
@@ -255,11 +330,11 @@ export function useSchedule(): UseScheduleResult {
       }
       return persistPlacement(original, scheduledDate, startMinutes)
     },
-    [persistPlacement, userId],
+    [cloneTaskToRecurringBlocks, persistPlacement, userId],
   )
 
-  const createRoutineBlock = useCallback<UseScheduleResult['createRoutineBlock']>(
-    async ({ title, notes = '', scheduledDate, plannedDurationMinutes, startTime = null, areaId = null }) => {
+  const createRoutineRecurringBlocks = useCallback<UseScheduleResult['createRoutineRecurringBlocks']>(
+    async ({ title, notes = '', scheduledDate, plannedDurationMinutes, startTime = null, areaId = null }, recurrence) => {
       if (!userId) return { ok: false, message: 'Debes iniciar sesión.' }
       const cleanTitle = title.trim()
       if (!cleanTitle || cleanTitle.length > 120) {
@@ -269,8 +344,8 @@ export function useSchedule(): UseScheduleResult {
         return { ok: false, message: 'La duración debe estar entre 1 y 1440 minutos.' }
       }
 
-      let startMinutes: number | null = null
       if (startTime) {
+        let startMinutes: number
         try {
           startMinutes = timeToMinutes(startTime)
         } catch {
@@ -281,25 +356,97 @@ export function useSchedule(): UseScheduleResult {
         }
       }
 
-      const routineBlock: ScheduleBlock = {
+      const dates = calculateRecurringDates(scheduledDate, recurrence)
+      const repeatDesc = recurrence.frequency !== 'none' ? describeRecurrenceRule(recurrence, scheduledDate) : ''
+      const finalNotes = repeatDesc ? formatNotesWithRecurrence(notes, repeatDesc) : notes
+
+      const newBlocks: ScheduleBlock[] = dates.map((date) => ({
         id: createUuid(),
         user_id: userId,
         master_task_id: null,
         area_id: areaId,
         title: cleanTitle,
-        notes,
-        scheduled_date: scheduledDate,
+        notes: finalNotes,
+        scheduled_date: date,
         start_time: startTime,
         planned_duration_minutes: plannedDurationMinutes,
         actual_duration_minutes: null,
         is_completed: false,
         is_routine: true,
         created_at: new Date().toISOString(),
+      }))
+
+      try {
+        const { data, error: upsertError } = await supabase
+          .from('schedule_blocks')
+          .upsert(newBlocks)
+          .select('*')
+        if (upsertError) throw upsertError
+
+        const savedBlocks = data && data.length > 0 ? (data as ScheduleBlock[]) : newBlocks
+        const visibleBlocks = savedBlocks.filter((b) => b.scheduled_date >= today && b.scheduled_date <= windowEnd)
+        if (visibleBlocks.length > 0) {
+          setBlocks((current) => mergeBlocks(current, visibleBlocks))
+        }
+
+        return { ok: true, data: savedBlocks }
+      } catch (err) {
+        console.error('Error al guardar rutinas recurrentes:', err)
+        const message = (err as { message?: string })?.message || MUTATION_ERROR
+        return { ok: false, message }
+      }
+    },
+    [today, userId, windowEnd],
+  )
+
+  const createRoutineBlock = useCallback<UseScheduleResult['createRoutineBlock']>(
+    async (input, recurrence) => {
+      if (recurrence && recurrence.frequency !== 'none') {
+        const res = await createRoutineRecurringBlocks(input, recurrence)
+        if (!res.ok) return { ok: false, message: res.message }
+        return { ok: true, data: res.data[0] }
       }
 
-      return persistPlacement(routineBlock, scheduledDate, startMinutes)
+      if (!userId) return { ok: false, message: 'Debes iniciar sesión.' }
+      const cleanTitle = input.title.trim()
+      if (!cleanTitle || cleanTitle.length > 120) {
+        return { ok: false, message: 'El título debe tener entre 1 y 120 caracteres.' }
+      }
+      if (!Number.isInteger(input.plannedDurationMinutes) || input.plannedDurationMinutes < 1 || input.plannedDurationMinutes > 1440) {
+        return { ok: false, message: 'La duración debe estar entre 1 y 1440 minutos.' }
+      }
+
+      let startMinutes: number | null = null
+      if (input.startTime) {
+        try {
+          startMinutes = timeToMinutes(input.startTime)
+        } catch {
+          return { ok: false, message: 'La hora de inicio no es válida.' }
+        }
+        if (startMinutes + input.plannedDurationMinutes > 1440) {
+          return { ok: false, message: OUTSIDE_DAY_ERROR }
+        }
+      }
+
+      const routineBlock: ScheduleBlock = {
+        id: createUuid(),
+        user_id: userId,
+        master_task_id: null,
+        area_id: input.areaId ?? null,
+        title: cleanTitle,
+        notes: input.notes ?? '',
+        scheduled_date: input.scheduledDate,
+        start_time: input.startTime ?? null,
+        planned_duration_minutes: input.plannedDurationMinutes,
+        actual_duration_minutes: null,
+        is_completed: false,
+        is_routine: true,
+        created_at: new Date().toISOString(),
+      }
+
+      return persistPlacement(routineBlock, input.scheduledDate, startMinutes)
     },
-    [persistPlacement, userId],
+    [createRoutineRecurringBlocks, persistPlacement, userId],
   )
 
   const moveBlock = useCallback<UseScheduleResult['moveBlock']>(
@@ -371,6 +518,8 @@ export function useSchedule(): UseScheduleResult {
     refresh,
     cloneTaskToBlock,
     createRoutineBlock,
+    cloneTaskToRecurringBlocks,
+    createRoutineRecurringBlocks,
     moveBlock,
     updateBlock,
     deleteBlock,

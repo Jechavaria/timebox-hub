@@ -29,11 +29,16 @@ import type { CreateRoutineBlockInput, LocalDateString, MutationResult, Schedule
 import { Button } from '../ui/Button.tsx'
 import { Modal } from '../ui/Modal.tsx'
 import { DurationPicker } from '../ui/DurationPicker.tsx'
+import { RecurrenceSelector } from '../ui/RecurrenceSelector.tsx'
+import type { RecurrenceRule } from '../../lib/recurrence.ts'
 
 interface RoutineModalProps {
   date: LocalDateString | null
   onClose: () => void
-  onSave: (input: CreateRoutineBlockInput) => Promise<MutationResult<ScheduleBlock>>
+  onSave: (
+    input: CreateRoutineBlockInput,
+    recurrence?: RecurrenceRule,
+  ) => Promise<MutationResult<ScheduleBlock>>
 }
 
 const QUICK_DURATIONS = [15, 30, 45, 60, 90, 120, 480]
@@ -59,6 +64,7 @@ export function RoutineModal({ date, onClose, onSave }: RoutineModalProps) {
   const [duration, setDuration] = useState(BUILTIN_ROUTINE_TEMPLATES[0].defaultMinutes)
   const [hasTime, setHasTime] = useState(true)
   const [startTime, setStartTime] = useState(BUILTIN_ROUTINE_TEMPLATES[0].suggestedTime)
+  const [recurrence, setRecurrence] = useState<RecurrenceRule>({ frequency: 'none' })
   const [areaId, setAreaId] = useState<string>('')
   const [origin, setOrigin] = useState('')
   const [destination, setDestination] = useState('')
@@ -180,7 +186,7 @@ export function RoutineModal({ date, onClose, onSave }: RoutineModalProps) {
       plannedDurationMinutes: duration,
       startTime: normalizedTime,
       areaId: areaId || null,
-    })
+    }, recurrence)
     setSaving(false)
     if (!result.ok) {
       setError(result.message)
@@ -482,6 +488,16 @@ export function RoutineModal({ date, onClose, onSave }: RoutineModalProps) {
             </p>
           )}
         </div>
+
+        {/* Repetición estilo Google Calendar */}
+        {date ? (
+          <RecurrenceSelector
+            baseDate={date}
+            value={recurrence}
+            onChange={setRecurrence}
+            disabled={saving}
+          />
+        ) : null}
 
         {/* Ámbito opcional */}
         {areas.areas.length > 0 ? (

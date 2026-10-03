@@ -197,6 +197,8 @@ function AnalyticsDashboard() {
       completedCount: number
       failedCount: number
       totalMinutes: number
+      totalQuantity: number
+      primaryUnit: string
       unitsSummary: string[]
     }>()
 
@@ -212,6 +214,8 @@ function AnalyticsDashboard() {
         completedCount: 0,
         failedCount: 0,
         totalMinutes: 0,
+        totalQuantity: 0,
+        primaryUnit: '',
         unitsSummary: [],
       }
 
@@ -223,6 +227,14 @@ function AnalyticsDashboard() {
           existing.completedCount += 1
         }
         existing.totalMinutes += b.actual_duration_minutes ?? b.planned_duration_minutes
+
+        if (statusInfo.metricQuantity && statusInfo.metricQuantity > 0) {
+          existing.totalQuantity += statusInfo.metricQuantity
+        }
+        if (statusInfo.metricUnit && !existing.primaryUnit) {
+          existing.primaryUnit = statusInfo.metricUnit
+        }
+
         if (statusInfo.metricProgress && !existing.unitsSummary.includes(statusInfo.metricProgress)) {
           existing.unitsSummary.push(statusInfo.metricProgress)
         }
@@ -798,40 +810,100 @@ function AnalyticsDashboard() {
                       No hay rutinas o hábitos registrados en este período. Agrega rutinas como Duolingo, Lectura o Ejercicio en tu agenda.
                     </p>
                   ) : (
-                    <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-                      {habitsAnalysis.map((habit) => (
-                        <div
-                          key={habit.title}
-                          className="flex flex-col gap-1.5 rounded-xl border border-glass-border bg-glass p-3"
-                        >
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="font-semibold text-xs text-ink truncate">{habit.title}</span>
-                            <span className="rounded-md bg-accent-soft px-1.5 py-0.5 text-[11px] font-bold text-accent tabular-nums">
-                              {habit.completedCount}/{habit.totalCount} completadas
-                            </span>
-                          </div>
-                          <div className="flex items-center justify-between text-[11px] text-ink-muted">
-                            <span>Tiempo invertido: {formatDuration(habit.totalMinutes)}</span>
-                            {habit.failedCount > 0 ? (
-                              <span className="text-danger font-medium">{habit.failedCount} fallidas</span>
-                            ) : (
-                              <span className="text-success font-medium">100% éxito</span>
-                            )}
-                          </div>
-                          {habit.unitsSummary.length > 0 ? (
-                            <div className="mt-0.5 flex flex-wrap gap-1">
-                              {habit.unitsSummary.map((u, i) => (
-                                <span
-                                  key={i}
-                                  className="rounded bg-accent/15 px-1.5 py-0.5 text-[10px] font-medium text-accent"
-                                >
-                                  🎯 {u}
-                                </span>
-                              ))}
-                            </div>
-                          ) : null}
+                    <div className="space-y-3">
+                      {/* Resumen global de hábitos en el período */}
+                      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                        <div className="rounded-xl border border-accent/20 bg-accent/5 p-2.5 text-center">
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-accent">Hábitos seguidos</p>
+                          <p className="mt-0.5 text-lg font-extrabold text-ink tabular-nums">{habitsAnalysis.length}</p>
                         </div>
-                      ))}
+                        <div className="rounded-xl border border-success/20 bg-success/5 p-2.5 text-center">
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-success">Tiempo en hábitos</p>
+                          <p className="mt-0.5 text-lg font-extrabold text-success tabular-nums">
+                            {formatDuration(habitsAnalysis.reduce((acc, h) => acc + h.totalMinutes, 0))}
+                          </p>
+                        </div>
+                        <div className="col-span-2 sm:col-span-1 rounded-xl border border-blue-500/20 bg-blue-500/5 p-2.5 text-center">
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-blue-400">Sesiones completadas</p>
+                          <p className="mt-0.5 text-lg font-extrabold text-blue-300 tabular-nums">
+                            {habitsAnalysis.reduce((acc, h) => acc + h.completedCount, 0)}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Tarjetas individuales de hábitos con acumulación */}
+                      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                        {habitsAnalysis.map((habit) => (
+                          <div
+                            key={habit.title}
+                            className="flex flex-col gap-2 rounded-2xl border border-glass-border bg-glass p-3.5 shadow-sm hover:border-glass-border/80 transition-all"
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="font-bold text-xs text-ink truncate">{habit.title}</span>
+                              <span className="rounded-md bg-accent-soft px-1.5 py-0.5 text-[11px] font-bold text-accent tabular-nums">
+                                {habit.completedCount}/{habit.totalCount} sesiones
+                              </span>
+                            </div>
+
+                            {/* Métricas clave: Progreso Acumulado + Tiempo Invertido */}
+                            <div className="grid grid-cols-2 gap-2 my-0.5">
+                              <div className="rounded-xl border border-glass-border/70 bg-glass/60 p-2 text-center">
+                                <p className="text-[10px] font-semibold uppercase text-ink-faint">
+                                  Progreso acumulado
+                                </p>
+                                <p className="mt-0.5 text-sm font-extrabold text-accent tabular-nums">
+                                  {habit.totalQuantity > 0 ? (
+                                    <>
+                                      {habit.totalQuantity}{' '}
+                                      <span className="text-[11px] font-medium text-ink-muted">
+                                        {habit.primaryUnit || 'unidades'}
+                                      </span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      {habit.completedCount}{' '}
+                                      <span className="text-[11px] font-medium text-ink-muted">sesiones</span>
+                                    </>
+                                  )}
+                                </p>
+                              </div>
+
+                              <div className="rounded-xl border border-glass-border/70 bg-glass/60 p-2 text-center">
+                                <p className="text-[10px] font-semibold uppercase text-ink-faint">
+                                  Tiempo invertido
+                                </p>
+                                <p className="mt-0.5 text-sm font-extrabold text-success tabular-nums">
+                                  {formatDuration(habit.totalMinutes)}
+                                </p>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center justify-between text-[11px] text-ink-muted pt-1 border-t border-glass-border/40">
+                              <span className="tabular-nums">
+                                Efectividad: {habit.totalCount > 0 ? Math.round((habit.completedCount / habit.totalCount) * 100) : 0}%
+                              </span>
+                              {habit.failedCount > 0 ? (
+                                <span className="text-danger font-medium">{habit.failedCount} fallidas</span>
+                              ) : (
+                                <span className="text-success font-medium">✨ 100% éxito</span>
+                              )}
+                            </div>
+
+                            {habit.unitsSummary.length > 0 && habit.totalQuantity === 0 ? (
+                              <div className="flex flex-wrap gap-1 pt-0.5">
+                                {habit.unitsSummary.map((u, i) => (
+                                  <span
+                                    key={i}
+                                    className="rounded bg-accent/15 px-1.5 py-0.5 text-[10px] font-medium text-accent"
+                                  >
+                                    🎯 {u}
+                                  </span>
+                                ))}
+                              </div>
+                            ) : null}
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
                 </Section>

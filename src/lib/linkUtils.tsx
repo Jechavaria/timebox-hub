@@ -8,6 +8,116 @@ export interface DetectedLink {
   display: string
 }
 
+export type CloudDocType =
+  | 'google_docs'
+  | 'google_sheets'
+  | 'google_slides'
+  | 'google_drive'
+  | 'office_word'
+  | 'office_excel'
+  | 'office_powerpoint'
+  | 'generic'
+
+export interface CloudDocServiceInfo {
+  type: CloudDocType
+  label: string
+  serviceName: string
+  isCloudDoc: boolean
+  badgeColor: string
+  textColor: string
+  actionLabel: string
+}
+
+export function detectCloudDocService(url: string): CloudDocServiceInfo {
+  const u = url.toLowerCase()
+  if (u.includes('docs.google.com/document') || u.includes('docs.new')) {
+    return {
+      type: 'google_docs',
+      label: 'Google Docs',
+      serviceName: 'Google Docs',
+      isCloudDoc: true,
+      badgeColor: 'border-blue-500/40 bg-blue-500/15 text-blue-300',
+      textColor: 'text-blue-400',
+      actionLabel: 'Abrir y editar en Google Docs',
+    }
+  }
+  if (u.includes('docs.google.com/spreadsheets') || u.includes('sheets.new')) {
+    return {
+      type: 'google_sheets',
+      label: 'Google Sheets',
+      serviceName: 'Google Sheets',
+      isCloudDoc: true,
+      badgeColor: 'border-emerald-500/40 bg-emerald-500/15 text-emerald-300',
+      textColor: 'text-emerald-400',
+      actionLabel: 'Abrir y editar en Google Sheets',
+    }
+  }
+  if (u.includes('docs.google.com/presentation') || u.includes('slides.new')) {
+    return {
+      type: 'google_slides',
+      label: 'Google Slides',
+      serviceName: 'Google Slides',
+      isCloudDoc: true,
+      badgeColor: 'border-amber-500/40 bg-amber-500/15 text-amber-300',
+      textColor: 'text-amber-400',
+      actionLabel: 'Abrir y editar en Google Slides',
+    }
+  }
+  if (u.includes('drive.google.com')) {
+    return {
+      type: 'google_drive',
+      label: 'Google Drive',
+      serviceName: 'Google Drive',
+      isCloudDoc: true,
+      badgeColor: 'border-cyan-500/40 bg-cyan-500/15 text-cyan-300',
+      textColor: 'text-cyan-400',
+      actionLabel: 'Abrir en Google Drive',
+    }
+  }
+  if (u.includes('word.office.com') || (u.includes('sharepoint.com') && u.includes('.doc'))) {
+    return {
+      type: 'office_word',
+      label: 'Word Online',
+      serviceName: 'Microsoft 365',
+      isCloudDoc: true,
+      badgeColor: 'border-blue-600/40 bg-blue-600/15 text-blue-300',
+      textColor: 'text-blue-400',
+      actionLabel: 'Abrir y editar en Word Online',
+    }
+  }
+  if (u.includes('excel.office.com') || (u.includes('sharepoint.com') && u.includes('.xls'))) {
+    return {
+      type: 'office_excel',
+      label: 'Excel Online',
+      serviceName: 'Microsoft 365',
+      isCloudDoc: true,
+      badgeColor: 'border-emerald-600/40 bg-emerald-600/15 text-emerald-300',
+      textColor: 'text-emerald-400',
+      actionLabel: 'Abrir y editar en Excel Online',
+    }
+  }
+  if (u.includes('powerpoint.office.com') || (u.includes('sharepoint.com') && u.includes('.ppt'))) {
+    return {
+      type: 'office_powerpoint',
+      label: 'PowerPoint Online',
+      serviceName: 'Microsoft 365',
+      isCloudDoc: true,
+      badgeColor: 'border-orange-500/40 bg-orange-500/15 text-orange-300',
+      textColor: 'text-orange-400',
+      actionLabel: 'Abrir y editar en PowerPoint Online',
+    }
+  }
+  return {
+    type: 'generic',
+    label: 'Enlace web',
+    serviceName: 'Web',
+    isCloudDoc: false,
+    badgeColor: 'border-accent/40 bg-accent/15 text-accent',
+    textColor: 'text-accent',
+    actionLabel: 'Abrir enlace',
+  }
+}
+
 export function normalizeUrl(rawUrl: string): string {
   const trimmed = rawUrl.trim()
   if (/^https?:\/\//i.test(trimmed)) return trimmed

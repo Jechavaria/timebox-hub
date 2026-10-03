@@ -1,12 +1,13 @@
 import { memo, useMemo, useState } from 'react'
 import type { CSSProperties } from 'react'
 import clsx from 'clsx'
-import { Check, GripVertical, Sparkles, Trash2, Undo2 } from 'lucide-react'
+import { Check, GripVertical, Repeat, Sparkles, Trash2, Undo2 } from 'lucide-react'
 import { useDraggable } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
 import { MIN_BLOCK_PX, PX_PER_MINUTE } from '../../lib/constants.ts'
 import { formatDuration, minutesToHM, timeToMinutes } from '../../lib/time.ts'
 import { parseBlockStatus } from '../../lib/routineHabits.ts'
+import { parseRecurrenceFromNotes } from '../../lib/recurrence.ts'
 import type { Area, ScheduleBlock } from '../../types/domain.ts'
 import { IconButton } from '../ui/IconButton.tsx'
 
@@ -38,6 +39,7 @@ function ScheduleBlockCardComponent({
   })
   const muted = Boolean(area?.is_hidden)
   const parsedStatus = useMemo(() => parseBlockStatus(block), [block.notes, block.is_completed])
+  const recurrenceTag = useMemo(() => parseRecurrenceFromNotes(block.notes), [block.notes])
   const startMinutes = block.start_time ? timeToMinutes(block.start_time) : 0
   const effectiveDuration = previewDuration ?? block.planned_duration_minutes
   const height = Math.max(MIN_BLOCK_PX, effectiveDuration * PX_PER_MINUTE)
@@ -130,6 +132,11 @@ function ScheduleBlockCardComponent({
           </IconButton>
           {block.is_routine ? (
             <Sparkles aria-label="Rutina cotidiana" className="size-3.5 shrink-0 text-accent" />
+          ) : null}
+          {recurrenceTag ? (
+            <span title={`Repetitiva: ${recurrenceTag}`}>
+              <Repeat aria-label={`Repetitiva: ${recurrenceTag}`} className="size-3.5 shrink-0 text-blue-400" />
+            </span>
           ) : null}
           <span
             className={clsx(

@@ -13,6 +13,8 @@ import { FileList } from './FileList.tsx'
 import { FilePreviewModal } from './FilePreviewModal.tsx'
 import { FileUploader } from './FileUploader.tsx'
 import { NotesLinkBar, renderTextWithLinks } from '../../lib/linkUtils.tsx'
+import { RecurrenceSelector } from '../ui/RecurrenceSelector.tsx'
+import type { RecurrenceRule } from '../../lib/recurrence.ts'
 
 interface TaskModalProps {
   task: MasterTask | null
@@ -32,6 +34,7 @@ export function TaskModal({ task, onClose, onSave }: TaskModalProps) {
   const [areaId, setAreaId] = useState('')
   const [planDate, setPlanDate] = useState('')
   const [planTime, setPlanTime] = useState('')
+  const [recurrence, setRecurrence] = useState<RecurrenceRule>({ frequency: 'none' })
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [previewFile, setPreviewFile] = useState<TaskFile | null>(null)
@@ -97,13 +100,17 @@ export function TaskModal({ task, onClose, onSave }: TaskModalProps) {
           // ignore
         }
       }
-      const cloneResult = await schedule.cloneTaskToBlock(result.data, planDate, startMinutes)
+      const cloneResult = await schedule.cloneTaskToBlock(result.data, planDate, startMinutes, recurrence)
       if (cloneResult.ok) {
-        toast.success(
-          startMinutes !== null
-            ? `“${cleanTitle}” planificada para ${planDate} a las ${minutesToHM(startMinutes)}.`
-            : `“${cleanTitle}” añadida a Sin hora para ${planDate}.`,
-        )
+        if (recurrence && recurrence.frequency !== 'none') {
+          toast.success(`“${cleanTitle}” programada repetitivamente en la agenda.`)
+        } else {
+          toast.success(
+            startMinutes !== null
+              ? `“${cleanTitle}” planificada para ${planDate} a las ${minutesToHM(startMinutes)}.`
+              : `“${cleanTitle}” añadida a Sin hora para ${planDate}.`,
+          )
+        }
       } else {
         toast.error(cloneResult.message, 'No se pudo planificar en la agenda')
       }
@@ -321,6 +328,7 @@ export function TaskModal({ task, onClose, onSave }: TaskModalProps) {
                     onClick={() => {
                       setPlanDate('')
                       setPlanTime('')
+                      setRecurrence({ frequency: 'none' })
                     }}
                     className="ml-auto text-[11px] text-ink-faint hover:text-danger cursor-pointer"
                   >
@@ -328,6 +336,17 @@ export function TaskModal({ task, onClose, onSave }: TaskModalProps) {
                   </button>
                 ) : null}
               </div>
+
+              {planDate ? (
+                <div className="pt-1">
+                  <RecurrenceSelector
+                    baseDate={planDate}
+                    value={recurrence}
+                    onChange={setRecurrence}
+                    disabled={saving}
+                  />
+                </div>
+              ) : null}
             </div>
 
             {error ? <p role="alert" className="text-sm text-danger">{error}</p> : null}
