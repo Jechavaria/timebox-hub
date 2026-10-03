@@ -1,6 +1,7 @@
-import { useEffect, useId, useState } from 'react'
+import { useEffect, useId, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
-import { Check } from 'lucide-react'
+import { CalendarPlus, Check } from 'lucide-react'
+import { addDays, minutesToHM, timeToMinutes, toLocalDateString } from '../../lib/time.ts'
 import { usePlanner } from '../../hooks/usePlanner.ts'
 import { useTaskFiles } from '../../hooks/useTaskFiles.ts'
 import { useToast } from '../../hooks/useToast.ts'
@@ -19,7 +20,7 @@ interface TaskModalProps {
 }
 
 export function TaskModal({ task, onClose, onSave }: TaskModalProps) {
-  const { areas } = usePlanner()
+  const { areas, schedule } = usePlanner()
   const taskFiles = useTaskFiles(task?.id ?? null)
   const toast = useToast()
   const [title, setTitle] = useState('')
@@ -27,12 +28,17 @@ export function TaskModal({ task, onClose, onSave }: TaskModalProps) {
   const [duration, setDuration] = useState(30)
   const [priorityStr, setPriorityStr] = useState('0')
   const [areaId, setAreaId] = useState('')
+  const [planDate, setPlanDate] = useState('')
+  const [planTime, setPlanTime] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [previewFile, setPreviewFile] = useState<TaskFile | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [loadingPreview, setLoadingPreview] = useState(false)
   const uid = useId()
+
+  const todayStr = useMemo(() => toLocalDateString(new Date()), [])
+  const tomorrowStr = useMemo(() => addDays(todayStr, 1), [todayStr])
 
   useEffect(() => {
     if (!task) return
@@ -41,6 +47,8 @@ export function TaskModal({ task, onClose, onSave }: TaskModalProps) {
     setDuration(task.estimated_duration_minutes)
     setPriorityStr(String(task.priority_order ?? 0))
     setAreaId(task.area_id)
+    setPlanDate('')
+    setPlanTime('')
     setError(null)
   }, [task?.id, task?.title, task?.description, task?.estimated_duration_minutes, task?.priority_order, task?.area_id])
 
@@ -76,6 +84,29 @@ export function TaskModal({ task, onClose, onSave }: TaskModalProps) {
       setError(result.message)
       return
     }
+
+    // Si el usuario eligió fecha para planificarla directamente
+    if (planDate) {
+      let startMinutes: number | null = null
+      if (planTime) {
+        try {
+          startMinutes = timeToMinutes(planTime)
+        } catch {
+          // ignore
+        }
+      }
+      const cloneResult = await schedule.cloneTaskToBlock(result.data, planDate, startMinutes)
+      if (cloneResult.ok) {
+        toast.success(
+          startMinutes !== null
+            ? `“${cleanTitle}” planificada para ${planDate} a las ${minutesToHM(startMinutes)}.`
+            : `“${cleanTitle}” añadida a Sin hora para ${planDate}.`,
+        )
+      } else {
+        toast.error(cloneResult.message, 'No se pudo planificar en la agenda')
+      }
+    }
+
     onClose()
   }
 
@@ -204,6 +235,80 @@ export function TaskModal({ task, onClose, onSave }: TaskModalProps) {
                 </select>
               </div>
             </div>
+
+            {/* Planificar directamente en la agenda (opcional) */}
+            <div className="flex flex-col gap-2 rounded-2xl border border-glass-border bg-glass p-3">
+              <div className="flex items-center justify-between">
+                <span className="flex items-center gap-1.5 text-xs font-semibold text-ink">
+                  <CalendarPlus className="size-3.5 text-accent" />
+                  Planificar en la agenda (opcional)
+                </span>
+                <span className="text-[11px] text-ink-faint">Día y hora</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2.5">
+                <div>
+                  <label htmlFor={`${uid}-plan-date`} className="text-[11px] text-ink-muted">
+                    Día
+                  </label>
+                  <input
+                    id={`${uid}-plan-date`}
+                    type="date"
+                    value={planDate}
+                    onChange={(e) => setPlanDate(e.target.value)}
+                    className="glass-input mt-1 text-xs"
+                  />
+                </div>
+                <div>
+                  <label htmlFor={`${uid}-plan-time`} className="text-[11px] text-ink-muted">
+                    Hora (vacía = Sin hora)
+                  </label>
+                  <input
+                    id={`${uid}-plan-time`}
+                    type="time"
+                    value={planTime}
+                    onChange={(e) => setPlanTime(e.target.value)}
+                    className="glass-input mt-1 text-xs tabular-nums"
+                  />
+                </div>
+              </div>
+              <div className="mt-1 flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPlanDate(todayStr)}
+                  className={`rounded-md border px-2 py-0.5 text-[11px] font-medium transition-colors cursor-pointer ${
+                    planDate === todayStr
+                      ? 'border-accent bg-accent/20 text-accent font-bold'
+                      : 'border-glass-border/70 bg-glass/60 text-ink-muted hover:border-accent hover:text-ink'
+                  }`}
+                >
+                  Hoy
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPlanDate(tomorrowStr)}
+                  className={`rounded-md border px-2 py-0.5 text-[11px] font-medium transition-colors cursor-pointer ${
+                    planDate === tomorrowStr
+                      ? 'border-accent bg-accent/20 text-accent font-bold'
+                      : 'border-glass-border/70 bg-glass/60 text-ink-muted hover:border-accent hover:text-ink'
+                  }`}
+                >
+                  Mañana
+                </button>
+                {planDate ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPlanDate('')
+                      setPlanTime('')
+                    }}
+                    className="ml-auto text-[11px] text-ink-faint hover:text-danger cursor-pointer"
+                  >
+                    Quitar fecha
+                  </button>
+                ) : null}
+              </div>
+            </div>
+
             {error ? <p role="alert" className="text-sm text-danger">{error}</p> : null}
           </form>
 

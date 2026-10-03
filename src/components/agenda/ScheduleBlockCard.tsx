@@ -1,4 +1,4 @@
-import { memo, useState } from 'react'
+import { memo, useMemo, useState } from 'react'
 import type { CSSProperties } from 'react'
 import clsx from 'clsx'
 import { Check, GripVertical, Sparkles, Trash2, Undo2 } from 'lucide-react'
@@ -6,6 +6,7 @@ import { useDraggable } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
 import { MIN_BLOCK_PX, PX_PER_MINUTE } from '../../lib/constants.ts'
 import { formatDuration, minutesToHM, timeToMinutes } from '../../lib/time.ts'
+import { parseBlockStatus } from '../../lib/routineHabits.ts'
 import type { Area, ScheduleBlock } from '../../types/domain.ts'
 import { IconButton } from '../ui/IconButton.tsx'
 
@@ -36,6 +37,7 @@ function ScheduleBlockCardComponent({
     data: { type: 'schedule-block', blockId: block.id, durationMinutes: block.planned_duration_minutes },
   })
   const muted = Boolean(area?.is_hidden)
+  const parsedStatus = useMemo(() => parseBlockStatus(block), [block.notes, block.is_completed])
   const startMinutes = block.start_time ? timeToMinutes(block.start_time) : 0
   const effectiveDuration = previewDuration ?? block.planned_duration_minutes
   const height = Math.max(MIN_BLOCK_PX, effectiveDuration * PX_PER_MINUTE)
@@ -43,8 +45,9 @@ function ScheduleBlockCardComponent({
     '--area-color': area?.color ?? '#8a909c',
     ...(untimed ? {} : { top: `${startMinutes}px`, height: `${height}px` }),
     transform: isDragging ? undefined : CSS.Transform.toString(transform),
-    opacity: isDragging ? 0.35 : block.is_completed ? 0.58 : undefined,
+    opacity: isDragging ? 0.35 : block.is_completed ? 0.6 : undefined,
     zIndex: isDragging ? 30 : isResizing ? 40 : undefined,
+    willChange: isDragging || isResizing ? 'transform' : undefined,
   } as CSSProperties
 
   const handleResizeStart = (e: React.PointerEvent) => {
@@ -104,6 +107,7 @@ function ScheduleBlockCardComponent({
         'glass-block flex min-w-0 cursor-pointer items-center gap-1 overflow-hidden px-1.5 py-1 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent',
         untimed ? 'min-h-11 w-full' : 'absolute inset-x-0',
         muted && 'glass-muted',
+        parsedStatus.status === 'failed_abandoned' && 'border-danger/40 bg-danger/5',
         block.is_completed && 'opacity-60',
         isDragging && 'ring-3 ring-accent/70',
         isResizing && 'ring-2 ring-accent',
@@ -126,7 +130,28 @@ function ScheduleBlockCardComponent({
         {block.is_routine ? (
           <Sparkles aria-label="Rutina cotidiana" className="size-3 shrink-0 text-accent" />
         ) : null}
-        <span className="min-w-0 flex-1 truncate text-xs font-semibold text-ink select-none">{block.title}</span>
+        <span
+          className={clsx(
+            'min-w-0 flex-1 truncate text-xs font-semibold select-none',
+            parsedStatus.status === 'failed_abandoned' ? 'line-through text-danger/80' : 'text-ink',
+          )}
+        >
+          {block.title}
+        </span>
+        {parsedStatus.status === 'failed_abandoned' ? (
+          <span className="shrink-0 rounded bg-danger/20 px-1 py-0.5 text-[9px] font-bold text-danger">
+            Fallida
+          </span>
+        ) : parsedStatus.status === 'failed_time' ? (
+          <span className="shrink-0 rounded bg-warning/20 px-1 py-0.5 text-[9px] font-bold text-warning">
+            Excedida
+          </span>
+        ) : null}
+        {parsedStatus.metricProgress ? (
+          <span className="hidden sm:inline-block shrink-0 rounded bg-accent/15 px-1 py-0.5 text-[9px] font-semibold text-accent">
+            {parsedStatus.metricProgress}
+          </span>
+        ) : null}
         {(untimed || height >= 54) ? (
           <span className="shrink-0 text-[10px] tabular-nums text-ink-muted select-none">
             {block.start_time ? minutesToHM(startMinutes) : formatDuration(effectiveDuration)}
@@ -156,10 +181,16 @@ function ScheduleBlockCardComponent({
         <Trash2 />
       </IconButton>
 
-      {/* Indicador numérico flotante durante el redimensionamiento */}
+      {/* Indicador flotante durante el redimensionamiento: muestra la hora exacta en la que finalizará */}
       {isResizing ? (
-        <div className="absolute bottom-3 right-2 z-30 rounded-md border border-glass-border bg-canvas/95 px-1.5 py-0.5 text-[10px] font-bold text-accent shadow-md tabular-nums">
-          {formatDuration(effectiveDuration)}
+        <div className="pointer-events-none absolute bottom-3.5 right-2 z-30 flex items-center gap-1 rounded-md border border-accent/40 bg-surface/95 px-2 py-0.5 text-[11px] font-bold text-accent shadow-xl backdrop-blur-md tabular-nums">
+          {block.start_time ? (
+            <span>
+              Termina: {minutesToHM(Math.min(1440, startMinutes + effectiveDuration))} ({formatDuration(effectiveDuration)})
+            </span>
+          ) : (
+            <span>{formatDuration(effectiveDuration)}</span>
+          )}
         </div>
       ) : null}
 

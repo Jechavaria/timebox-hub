@@ -1,3 +1,4 @@
+import { Analytics } from '@vercel/analytics/react'
 import { AuthGate } from './components/auth/AuthGate.tsx'
 import { AppShell } from './components/layout/AppShell.tsx'
 import { BackgroundLayer } from './components/layout/BackgroundLayer.tsx'
@@ -19,6 +20,7 @@ export default function App() {
           </AuthGate>
         </AuthProvider>
       </ToastProvider>
+      <Analytics />
     </AppearanceProvider>
   )
 }

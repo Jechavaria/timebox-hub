@@ -79,6 +79,8 @@ export function Agenda() {
     blockId: string,
     actualDurationMinutes: number,
     closeMasterTask: boolean,
+    completionStatus: 'completed' | 'failed_time' | 'failed_abandoned' = 'completed',
+    updatedNotes?: string,
   ): Promise<MutationResult<void>> => {
     const block = schedule.blocks.find((candidate) => candidate.id === blockId)
     if (!block) return { ok: false, message: 'El bloque ya no está disponible.' }
@@ -86,6 +88,7 @@ export function Agenda() {
     const blockResult = await schedule.updateBlock(blockId, {
       is_completed: true,
       actual_duration_minutes: actualDurationMinutes,
+      ...(updatedNotes !== undefined ? { notes: updatedNotes } : {}),
     })
     if (!blockResult.ok) return { ok: false, message: blockResult.message }
 
@@ -95,6 +98,7 @@ export function Agenda() {
         const rollback = await schedule.updateBlock(blockId, {
           is_completed: false,
           actual_duration_minutes: null,
+          notes: block.notes,
         })
         return {
           ok: false,
@@ -105,7 +109,13 @@ export function Agenda() {
       }
     }
 
-    toast.success('Bloque completado; tiempo real guardado.')
+    if (completionStatus === 'failed_abandoned') {
+      toast.warning('Bloque marcado como no realizado / fallido.')
+    } else if (completionStatus === 'failed_time') {
+      toast.info('Bloque completado (tiempo excedido registrado).')
+    } else {
+      toast.success('Bloque completado con éxito; tiempo real guardado.')
+    }
     return { ok: true, data: undefined }
   }
 

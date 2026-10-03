@@ -4,6 +4,7 @@ import clsx from 'clsx'
 import {
   AlertTriangle,
   BarChart3,
+  BookOpen,
   CalendarRange,
   CheckCircle2,
   ChevronLeft,
@@ -18,6 +19,7 @@ import {
   TrendingDown,
   TrendingUp,
 } from 'lucide-react'
+import { parseBlockStatus } from '../../lib/routineHabits.ts'
 import { usePlanner } from '../../hooks/usePlanner.ts'
 import { useToday } from '../../hooks/useToday.ts'
 import { useAnalyticsRange } from '../../hooks/useAnalyticsRange.ts'
@@ -142,32 +144,120 @@ function AnalyticsDashboard() {
 
   const areasById = useMemo(() => new Map(areas.areas.map((a) => [a.id, a])), [areas.areas])
 
-  // 1. Métricas de resumen general y completitud
+  // 1. Métricas de resumen general, completitud y fallos
   const summary = useMemo(() => {
     let plannedTotalMinutes = 0
     let actualCompletedMinutes = 0
     let plannedForCompletedMinutes = 0
     let completedCount = 0
+    let completedSuccessCount = 0
+    let failedTimeCount = 0
+    let failedAbandonedCount = 0
 
     for (const b of blocks) {
       plannedTotalMinutes += b.planned_duration_minutes
+      const statusInfo = parseBlockStatus(b)
       if (b.is_completed) {
         completedCount += 1
         plannedForCompletedMinutes += b.planned_duration_minutes
         actualCompletedMinutes += b.actual_duration_minutes ?? b.planned_duration_minutes
+
+        if (statusInfo.status === 'failed_abandoned') {
+          failedAbandonedCount += 1
+        } else if (statusInfo.status === 'failed_time') {
+          failedTimeCount += 1
+        } else {
+          completedSuccessCount += 1
+        }
       }
     }
 
     const totalBlocks = blocks.length
+    const totalFailedCount = failedTimeCount + failedAbandonedCount
     return {
       totalBlocks,
       completedCount,
+      completedSuccessCount,
+      failedTimeCount,
+      failedAbandonedCount,
+      totalFailedCount,
       completionRate: totalBlocks > 0 ? Math.round((completedCount / totalBlocks) * 100) : 0,
+      successRate: totalBlocks > 0 ? Math.round((completedSuccessCount / totalBlocks) * 100) : 0,
       plannedTotalMinutes,
       actualCompletedMinutes,
       discrepancy: actualCompletedMinutes - plannedForCompletedMinutes,
     }
   }, [blocks])
+
+  // Seguimiento de Rutinas y Hábitos cotidianos
+  const habitsAnalysis = useMemo(() => {
+    const map = new Map<string, {
+      title: string
+      totalCount: number
+      completedCount: number
+      failedCount: number
+      totalMinutes: number
+      unitsSummary: string[]
+    }>()
+
+    for (const b of blocks) {
+      const statusInfo = parseBlockStatus(b)
+      const isRoutineOrHabit = b.is_routine || Boolean(statusInfo.targetMetric) || Boolean(statusInfo.metricProgress)
+      if (!isRoutineOrHabit) continue
+
+      const key = b.title.trim().toLowerCase()
+      const existing = map.get(key) ?? {
+        title: b.title.trim(),
+        totalCount: 0,
+        completedCount: 0,
+        failedCount: 0,
+        totalMinutes: 0,
+        unitsSummary: [],
+      }
+
+      existing.totalCount += 1
+      if (b.is_completed) {
+        if (statusInfo.isFailed) {
+          existing.failedCount += 1
+        } else {
+          existing.completedCount += 1
+        }
+        existing.totalMinutes += b.actual_duration_minutes ?? b.planned_duration_minutes
+        if (statusInfo.metricProgress && !existing.unitsSummary.includes(statusInfo.metricProgress)) {
+          existing.unitsSummary.push(statusInfo.metricProgress)
+        }
+      }
+      map.set(key, existing)
+    }
+
+    return Array.from(map.values()).sort((a, b) => b.completedCount - a.completedCount)
+  }, [blocks])
+
+  // Análisis de Áreas donde más se falla
+  const failureAnalysis = useMemo(() => {
+    const areaFailures = new Map<string, { name: string; color: string; total: number; failed: number }>()
+
+    for (const b of blocks) {
+      const statusInfo = parseBlockStatus(b)
+      const area = b.area_id ? areasById.get(b.area_id) : null
+      const key = area ? area.id : '__no_area__'
+      const curr = areaFailures.get(key) ?? {
+        name: area ? area.name : 'Rutinas / General',
+        color: area ? area.color : NO_AREA_COLOR,
+        total: 0,
+        failed: 0,
+      }
+      curr.total += 1
+      if (statusInfo.isFailed) {
+        curr.failed += 1
+      }
+      areaFailures.set(key, curr)
+    }
+
+    const list = Array.from(areaFailures.values()).filter((item) => item.failed > 0)
+    list.sort((a, b) => b.failed - a.failed)
+    return list
+  }, [blocks, areasById])
 
   // 2. Distribución de tiempo por Ámbito
   const areaDistribution = useMemo(() => {
@@ -691,6 +781,116 @@ function AnalyticsDashboard() {
                         )
                       })}
                     </ul>
+                  )}
+                </Section>
+                {/* Seguimiento de Rutinas y Hábitos Cotidianos */}
+                <Section
+                  icon={<BookOpen className="size-4 text-accent" aria-hidden="true" />}
+                  title="Rutinas y Hábitos Cotidianos"
+                  aside={
+                    <span className="text-xs text-ink-muted">
+                      {habitsAnalysis.length} hábitos en {rangeLabel}
+                    </span>
+                  }
+                >
+                  {habitsAnalysis.length === 0 ? (
+                    <p className="py-3 text-center text-xs text-ink-muted">
+                      No hay rutinas o hábitos registrados en este período. Agrega rutinas como Duolingo, Lectura o Ejercicio en tu agenda.
+                    </p>
+                  ) : (
+                    <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                      {habitsAnalysis.map((habit) => (
+                        <div
+                          key={habit.title}
+                          className="flex flex-col gap-1.5 rounded-xl border border-glass-border bg-glass p-3"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-semibold text-xs text-ink truncate">{habit.title}</span>
+                            <span className="rounded-md bg-accent-soft px-1.5 py-0.5 text-[11px] font-bold text-accent tabular-nums">
+                              {habit.completedCount}/{habit.totalCount} completadas
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between text-[11px] text-ink-muted">
+                            <span>Tiempo invertido: {formatDuration(habit.totalMinutes)}</span>
+                            {habit.failedCount > 0 ? (
+                              <span className="text-danger font-medium">{habit.failedCount} fallidas</span>
+                            ) : (
+                              <span className="text-success font-medium">100% éxito</span>
+                            )}
+                          </div>
+                          {habit.unitsSummary.length > 0 ? (
+                            <div className="mt-0.5 flex flex-wrap gap-1">
+                              {habit.unitsSummary.map((u, i) => (
+                                <span
+                                  key={i}
+                                  className="rounded bg-accent/15 px-1.5 py-0.5 text-[10px] font-medium text-accent"
+                                >
+                                  🎯 {u}
+                                </span>
+                              ))}
+                            </div>
+                          ) : null}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </Section>
+
+                {/* Control de Cumplimiento y Análisis de Fallos */}
+                <Section
+                  icon={<AlertTriangle className="size-4 text-warning" aria-hidden="true" />}
+                  title="Control de Cumplimiento y Análisis de Fallos"
+                  aside={
+                    <span className="rounded-md bg-glass px-2 py-0.5 text-xs font-semibold text-ink-muted">
+                      Tasa de éxito: {summary.successRate}%
+                    </span>
+                  }
+                >
+                  <div className="grid grid-cols-3 gap-2 text-center mb-3">
+                    <div className="rounded-xl border border-success/30 bg-success/10 p-2">
+                      <p className="text-[11px] text-success font-medium">A tiempo</p>
+                      <p className="text-base font-bold text-success tabular-nums">{summary.completedSuccessCount}</p>
+                    </div>
+                    <div className="rounded-xl border border-warning/30 bg-warning/10 p-2">
+                      <p className="text-[11px] text-warning font-medium">Tiempo excedido</p>
+                      <p className="text-base font-bold text-warning tabular-nums">{summary.failedTimeCount}</p>
+                    </div>
+                    <div className="rounded-xl border border-danger/30 bg-danger/10 p-2">
+                      <p className="text-[11px] text-danger font-medium">No realizadas</p>
+                      <p className="text-base font-bold text-danger tabular-nums">{summary.failedAbandonedCount}</p>
+                    </div>
+                  </div>
+
+                  {failureAnalysis.length > 0 ? (
+                    <div className="space-y-2">
+                      <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
+                        Ámbitos con mayor fricción / fallos:
+                      </p>
+                      <ul className="space-y-2">
+                        {failureAnalysis.map((item) => (
+                          <li
+                            key={item.name}
+                            className="flex items-center justify-between gap-3 rounded-lg border border-glass-border bg-glass px-3 py-1.5 text-xs"
+                          >
+                            <span className="flex items-center gap-2 font-medium text-ink">
+                              <span
+                                className="size-2 rounded-full"
+                                style={{ backgroundColor: item.color }}
+                                aria-hidden="true"
+                              />
+                              {item.name}
+                            </span>
+                            <span className="tabular-nums text-danger font-semibold">
+                              {item.failed} fallo{item.failed > 1 ? 's' : ''} ({Math.round((item.failed / item.total) * 100)}% de sus bloques)
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : (
+                    <p className="text-center py-2 text-xs text-success font-medium">
+                      ✨ Excelente rendimiento: Sin tareas fallidas en este período.
+                    </p>
                   )}
                 </Section>
               </>

@@ -58,7 +58,7 @@ export function UpcomingDayCard({
         <button
           type="button"
           onClick={() => onMaximize(date)}
-          className="group flex min-w-0 flex-1 items-center gap-2 text-left"
+          className="group flex min-w-0 flex-1 items-center gap-2 text-left cursor-pointer outline-none focus:outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0"
           title={`Maximizar ${dateLabel} para organizar horas en detalle`}
         >
           <div className="min-w-0 flex-1">

@@ -1,10 +1,31 @@
 import { useId, useState } from 'react'
 import type { FormEvent } from 'react'
 import clsx from 'clsx'
-import { Car, Coffee, Moon, Sparkles, Utensils } from 'lucide-react'
+import {
+  BookOpen,
+  Car,
+  Code,
+  Coffee,
+  Dumbbell,
+  Languages,
+  Moon,
+  Plus,
+  Sparkles,
+  Target,
+  Trash2,
+  Utensils,
+} from 'lucide-react'
 import { usePlanner } from '../../hooks/usePlanner.ts'
 import { minutesToTime, timeToMinutes } from '../../lib/time.ts'
-import type { CreateRoutineBlockInput, LocalDateString, MutationResult, RoutineKind, ScheduleBlock } from '../../types/domain.ts'
+import {
+  BUILTIN_ROUTINE_TEMPLATES,
+  deleteCustomRoutineTemplate,
+  formatBlockNotesWithMeta,
+  getCustomRoutineTemplates,
+  saveCustomRoutineTemplate,
+  type CustomRoutineTemplate,
+} from '../../lib/routineHabits.ts'
+import type { CreateRoutineBlockInput, LocalDateString, MutationResult, ScheduleBlock } from '../../types/domain.ts'
 import { Button } from '../ui/Button.tsx'
 import { Modal } from '../ui/Modal.tsx'
 import { DurationPicker } from '../ui/DurationPicker.tsx'
@@ -15,85 +36,95 @@ interface RoutineModalProps {
   onSave: (input: CreateRoutineBlockInput) => Promise<MutationResult<ScheduleBlock>>
 }
 
-interface RoutineTemplate {
-  kind: RoutineKind
-  label: string
-  defaultTitle: string
-  defaultMinutes: number
-  suggestedTime: string
-  defaultNotes: string
-  icon: typeof Moon
-  accentColor: string
-}
-
-const TEMPLATES: readonly RoutineTemplate[] = [
-  {
-    kind: 'sleep',
-    label: 'Dormir',
-    defaultTitle: 'Dormir / Descanso',
-    defaultMinutes: 480,
-    suggestedTime: '23:00',
-    defaultNotes: 'Descanso nocturno reparador',
-    icon: Moon,
-    accentColor: '#818cf8',
-  },
-  {
-    kind: 'transport',
-    label: 'Transporte',
-    defaultTitle: 'Transporte',
-    defaultMinutes: 45,
-    suggestedTime: '08:00',
-    defaultNotes: '',
-    icon: Car,
-    accentColor: '#f59e0b',
-  },
-  {
-    kind: 'meal',
-    label: 'Comida',
-    defaultTitle: 'Almuerzo',
-    defaultMinutes: 60,
-    suggestedTime: '13:00',
-    defaultNotes: 'Alimentación e hidratación',
-    icon: Utensils,
-    accentColor: '#10b981',
-  },
-  {
-    kind: 'leisure',
-    label: 'Ocio',
-    defaultTitle: 'Ocio / Pausa activa',
-    defaultMinutes: 45,
-    suggestedTime: '18:30',
-    defaultNotes: 'Tiempo libre y esparcimiento',
-    icon: Coffee,
-    accentColor: '#ec4899',
-  },
-]
-
 const QUICK_DURATIONS = [15, 30, 45, 60, 90, 120, 480]
+
+const ICON_MAP = {
+  Moon,
+  Car,
+  Utensils,
+  Coffee,
+  BookOpen,
+  Languages,
+  Dumbbell,
+  Sparkles,
+  Code,
+  Target,
+} as const
 
 export function RoutineModal({ date, onClose, onSave }: RoutineModalProps) {
   const { areas } = usePlanner()
-  const [selectedKind, setSelectedKind] = useState<RoutineKind>('sleep')
-  const [title, setTitle] = useState(TEMPLATES[0].defaultTitle)
-  const [duration, setDuration] = useState(TEMPLATES[0].defaultMinutes)
+  const [customTemplates, setCustomTemplates] = useState<CustomRoutineTemplate[]>(() => getCustomRoutineTemplates())
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>(BUILTIN_ROUTINE_TEMPLATES[0].id)
+  const [title, setTitle] = useState(BUILTIN_ROUTINE_TEMPLATES[0].defaultTitle)
+  const [duration, setDuration] = useState(BUILTIN_ROUTINE_TEMPLATES[0].defaultMinutes)
   const [hasTime, setHasTime] = useState(true)
-  const [startTime, setStartTime] = useState(TEMPLATES[0].suggestedTime)
+  const [startTime, setStartTime] = useState(BUILTIN_ROUTINE_TEMPLATES[0].suggestedTime)
   const [areaId, setAreaId] = useState<string>('')
   const [origin, setOrigin] = useState('')
   const [destination, setDestination] = useState('')
-  const [customNotes, setCustomNotes] = useState(TEMPLATES[0].defaultNotes)
+  const [customNotes, setCustomNotes] = useState(BUILTIN_ROUTINE_TEMPLATES[0].defaultNotes)
+  const [targetUnit, setTargetUnit] = useState<string>('')
+  const [targetQty, setTargetQty] = useState<number | ''>('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Estado para crear una nueva plantilla personalizada
+  const [showCreateCustom, setShowCreateCustom] = useState(false)
+  const [newCustomTitle, setNewCustomTitle] = useState('')
+  const [newCustomMinutes, setNewCustomMinutes] = useState(30)
+  const [newCustomTime, setNewCustomTime] = useState('08:00')
+  const [newCustomUnit, setNewCustomUnit] = useState('')
+  const [newCustomQty, setNewCustomQty] = useState<number | ''>(5)
+  const [newCustomColor, setNewCustomColor] = useState('#6366f1')
+
   const uid = useId()
 
-  const handleSelectTemplate = (template: RoutineTemplate) => {
-    setSelectedKind(template.kind)
+  const allTemplates = [...customTemplates, ...BUILTIN_ROUTINE_TEMPLATES]
+
+  const handleSelectTemplate = (template: CustomRoutineTemplate) => {
+    setSelectedTemplateId(template.id)
     setTitle(template.defaultTitle)
     setDuration(template.defaultMinutes)
     setStartTime(template.suggestedTime)
     setHasTime(true)
     setCustomNotes(template.defaultNotes)
+    setTargetUnit(template.unitLabel || '')
+    setTargetQty(template.targetQuantity || '')
     setError(null)
+  }
+
+  const handleSaveNewCustomTemplate = (e: React.FormEvent) => {
+    e.preventDefault()
+    const clean = newCustomTitle.trim()
+    if (!clean) return
+
+    const newTemplate: CustomRoutineTemplate = {
+      id: `custom_${Date.now()}`,
+      label: clean,
+      defaultTitle: clean,
+      defaultMinutes: newCustomMinutes || 30,
+      suggestedTime: newCustomTime || '08:00',
+      defaultNotes: newCustomUnit ? `Meta: ${newCustomQty || ''} ${newCustomUnit}` : '',
+      iconName: newCustomUnit ? 'Target' : 'Sparkles',
+      accentColor: newCustomColor,
+      unitLabel: newCustomUnit.trim() || undefined,
+      targetQuantity: typeof newCustomQty === 'number' ? newCustomQty : undefined,
+    }
+
+    const updated = saveCustomRoutineTemplate(newTemplate)
+    setCustomTemplates(updated)
+    handleSelectTemplate(newTemplate)
+    setShowCreateCustom(false)
+    setNewCustomTitle('')
+  }
+
+  const handleDeleteCustomTemplate = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    const updated = deleteCustomRoutineTemplate(id)
+    setCustomTemplates(updated)
+    if (selectedTemplateId === id) {
+      handleSelectTemplate(BUILTIN_ROUTINE_TEMPLATES[0])
+    }
   }
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -121,7 +152,7 @@ export function RoutineModal({ date, onClose, onSave }: RoutineModalProps) {
     }
 
     let finalNotes = customNotes.trim()
-    if (selectedKind === 'transport') {
+    if (selectedTemplateId === 'transport') {
       const parts: string[] = []
       if (origin.trim() || destination.trim()) {
         parts.push(`Ruta: ${origin.trim() || '?'} ➔ ${destination.trim() || '?'}`)
@@ -130,12 +161,22 @@ export function RoutineModal({ date, onClose, onSave }: RoutineModalProps) {
       finalNotes = parts.join(' · ')
     }
 
+    // Preparar meta y plan inicial
+    const targetMetricStr = targetUnit.trim() && targetQty ? `${targetQty} ${targetUnit.trim()}` : undefined
+    const initialPlanMeta = normalizedTime ? { time: normalizedTime, duration } : undefined
+
+    const formattedNotes = formatBlockNotesWithMeta({
+      cleanNotes: finalNotes,
+      targetMetric: targetMetricStr,
+      initialPlan: initialPlanMeta,
+    })
+
     setSaving(true)
     setError(null)
     const result = await onSave({
       scheduledDate: date,
       title: cleanTitle,
-      notes: finalNotes,
+      notes: formattedNotes,
       plannedDurationMinutes: duration,
       startTime: normalizedTime,
       areaId: areaId || null,
@@ -152,12 +193,14 @@ export function RoutineModal({ date, onClose, onSave }: RoutineModalProps) {
     <Modal
       open={date !== null}
       onClose={onClose}
-      title="Agregar rutina cotidiana"
-      description={date ? `Insertar un bloque de rutina para el ${date}.` : undefined}
+      title="Agregar rutina o hábito"
+      description={date ? `Insertar un bloque de rutina o hábito para el ${date}.` : undefined}
       size="md"
       footer={
         <div className="flex justify-end gap-2">
-          <Button onClick={onClose} disabled={saving}>Cancelar</Button>
+          <Button onClick={onClose} disabled={saving}>
+            Cancelar
+          </Button>
           <Button
             type="submit"
             form={`routine-form-${uid}`}
@@ -177,35 +220,145 @@ export function RoutineModal({ date, onClose, onSave }: RoutineModalProps) {
           </p>
         ) : null}
 
-        {/* Selector de plantillas */}
+        {/* Selector de plantillas y hábitos */}
         <div>
-          <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-ink-faint">
-            Plantilla rápida
-          </label>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            {TEMPLATES.map((template) => {
-              const Icon = template.icon
-              const isSelected = selectedKind === template.kind
+          <div className="mb-2 flex items-center justify-between">
+            <label className="text-xs font-semibold uppercase tracking-wider text-ink-faint">
+              Elige una rutina o hábito
+            </label>
+            <button
+              type="button"
+              onClick={() => setShowCreateCustom(!showCreateCustom)}
+              className="flex items-center gap-1 text-[11px] font-medium text-accent hover:underline cursor-pointer"
+            >
+              <Plus className="size-3" />
+              {showCreateCustom ? 'Cerrar creador' : 'Crear hábito personalizado'}
+            </button>
+          </div>
+
+          {/* Formulario desplegable para crear hábito personalizado */}
+          {showCreateCustom ? (
+            <div className="mb-3 rounded-2xl border border-accent/30 bg-accent/5 p-3 space-y-3">
+              <p className="text-xs font-semibold text-ink">Nueva rutina o hábito personalizado</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[11px] text-ink-muted">Nombre del hábito</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ej. Racha Duolingo, Leer libro..."
+                    value={newCustomTitle}
+                    onChange={(e) => setNewCustomTitle(e.target.value)}
+                    className="glass-input mt-1 w-full text-xs"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] text-ink-muted">Unidad o métrica (opcional)</label>
+                  <input
+                    type="text"
+                    placeholder="Ej. páginas, lección, km..."
+                    value={newCustomUnit}
+                    onChange={(e) => setNewCustomUnit(e.target.value)}
+                    className="glass-input mt-1 w-full text-xs"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] text-ink-muted">Meta por sesión</label>
+                  <input
+                    type="number"
+                    min={1}
+                    placeholder="Ej. 5"
+                    value={newCustomQty}
+                    onChange={(e) => setNewCustomQty(e.target.value ? Number(e.target.value) : '')}
+                    className="glass-input mt-1 w-full text-xs"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] text-ink-muted">Duración (minutos)</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={1440}
+                    value={newCustomMinutes}
+                    onChange={(e) => setNewCustomMinutes(Number(e.target.value))}
+                    className="glass-input mt-1 w-full text-xs"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] text-ink-muted">Hora sugerida</label>
+                  <input
+                    type="time"
+                    value={newCustomTime}
+                    onChange={(e) => setNewCustomTime(e.target.value)}
+                    className="glass-input mt-1 w-full text-xs"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] text-ink-muted">Color distintivo</label>
+                  <div className="flex items-center gap-1.5 mt-1">
+                    {['#6366f1', '#22c55e', '#3b82f6', '#f97316', '#ec4899', '#06b6d4', '#eab308'].map((c) => (
+                      <button
+                        key={c}
+                        type="button"
+                        onClick={() => setNewCustomColor(c)}
+                        className={clsx(
+                          'size-5 rounded-full transition-transform',
+                          newCustomColor === c ? 'ring-2 ring-white scale-110' : 'opacity-70 hover:opacity-100',
+                        )}
+                        style={{ backgroundColor: c }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <div className="flex justify-end pt-1">
+                <Button size="sm" variant="primary" onClick={handleSaveNewCustomTemplate}>
+                  Guardar plantilla permanente
+                </Button>
+              </div>
+            </div>
+          ) : null}
+
+          {/* Carrusel / Grid de plantillas disponibles */}
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 max-h-52 overflow-y-auto pr-1">
+            {allTemplates.map((template) => {
+              const Icon = ICON_MAP[template.iconName as keyof typeof ICON_MAP] || Sparkles
+              const isSelected = selectedTemplateId === template.id
+              const isCustom = template.id.startsWith('custom_')
               return (
-                <button
-                  key={template.kind}
-                  type="button"
+                <div
+                  key={template.id}
                   onClick={() => handleSelectTemplate(template)}
                   className={clsx(
-                    'flex flex-col items-center gap-1.5 rounded-xl border p-2.5 text-center transition-all duration-150',
+                    'group relative flex flex-col items-center gap-1.5 rounded-xl border p-2.5 text-center cursor-pointer transition-all duration-150',
                     isSelected
-                      ? 'border-accent bg-accent/15 ring-2 ring-accent/30 text-ink'
+                      ? 'border-accent bg-accent/15 ring-2 ring-accent/30 text-ink shadow-sm'
                       : 'border-glass-border bg-glass hover:bg-glass-strong text-ink-muted',
                   )}
                 >
+                  {isCustom ? (
+                    <button
+                      type="button"
+                      title="Eliminar rutina personalizada"
+                      onClick={(e) => handleDeleteCustomTemplate(template.id, e)}
+                      className="absolute right-1 top-1 rounded p-1 text-ink-faint hover:text-danger opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <Trash2 className="size-3" />
+                    </button>
+                  ) : null}
                   <span
                     className="grid size-8 place-items-center rounded-lg"
                     style={{ backgroundColor: `${template.accentColor}25`, color: template.accentColor }}
                   >
                     <Icon className="size-4" aria-hidden="true" />
                   </span>
-                  <span className="text-xs font-semibold">{template.label}</span>
-                </button>
+                  <span className="text-xs font-semibold leading-tight line-clamp-1">{template.label}</span>
+                  {template.unitLabel && template.targetQuantity ? (
+                    <span className="text-[10px] text-accent font-medium">
+                      Meta: {template.targetQuantity} {template.unitLabel}
+                    </span>
+                  ) : null}
+                </div>
               )
             })}
           </div>
@@ -228,8 +381,42 @@ export function RoutineModal({ date, onClose, onSave }: RoutineModalProps) {
           />
         </div>
 
+        {/* Meta / Métrica opcional para hábitos (ej. Duolingo, lectura de páginas) */}
+        <div className="grid grid-cols-2 gap-2 rounded-xl border border-glass-border bg-glass p-3">
+          <div>
+            <label className="block text-[11px] font-medium text-ink-muted">
+              Meta numérica (opcional)
+            </label>
+            <input
+              type="number"
+              min={1}
+              value={targetQty}
+              onChange={(e) => setTargetQty(e.target.value ? Number(e.target.value) : '')}
+              placeholder="Ej. 5"
+              className="glass-input mt-1 w-full text-xs"
+            />
+          </div>
+          <div>
+            <label className="block text-[11px] font-medium text-ink-muted">
+              Unidad de seguimiento
+            </label>
+            <input
+              type="text"
+              value={targetUnit}
+              onChange={(e) => setTargetUnit(e.target.value)}
+              placeholder="Ej. páginas, lecciones"
+              className="glass-input mt-1 w-full text-xs"
+            />
+          </div>
+          {targetQty && targetUnit ? (
+            <p className="col-span-2 text-[11px] text-accent">
+              🎯 Seguimiento activo: Se registrará el avance de {targetQty} {targetUnit} al completar.
+            </p>
+          ) : null}
+        </div>
+
         {/* Campos específicos para transporte */}
-        {selectedKind === 'transport' ? (
+        {selectedTemplateId === 'transport' ? (
           <div className="grid grid-cols-1 gap-2 rounded-xl border border-glass-border bg-glass p-3 sm:grid-cols-2">
             <div>
               <label htmlFor={`routine-origin-${uid}`} className="block text-xs font-medium text-ink-muted">
