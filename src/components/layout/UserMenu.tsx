@@ -1,15 +1,17 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import type { KeyboardEvent as ReactKeyboardEvent } from 'react'
 import clsx from 'clsx'
-import { ChevronDown, LogOut } from 'lucide-react'
+import { ChevronDown, LogOut, Wallpaper } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth.ts'
 import { useToast } from '../../hooks/useToast.ts'
 import { Spinner } from '../ui/Spinner.tsx'
+import { BackgroundModal } from './BackgroundModal.tsx'
 
 export function UserMenu() {
   const { user, signOut } = useAuth()
   const toast = useToast()
   const [open, setOpen] = useState(false)
+  const [showBackgrounds, setShowBackgrounds] = useState(false)
   const [signingOut, setSigningOut] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
@@ -82,7 +84,7 @@ export function UserMenu() {
         aria-expanded={open}
         aria-controls={open ? menuId : undefined}
         onClick={() => setOpen((current) => !current)}
-        className="flex h-11 touch-manipulation items-center gap-1.5 rounded-2xl border border-glass-border bg-glass-strong pl-1.5 pr-2.5 transition-[background-color,scale] duration-200 ease-out-soft hover:bg-white/14 active:scale-[0.97]"
+        className="flex h-11 touch-manipulation items-center gap-1.5 rounded-2xl border border-glass-border bg-glass-strong pl-1.5 pr-2.5 transition-[background-color,scale] duration-200 ease-out-soft hover:bg-glass-strong active:scale-[0.97]"
       >
         <span
           aria-hidden="true"
@@ -115,9 +117,18 @@ export function UserMenu() {
             <button
               type="button"
               role="menuitem"
+              onClick={() => { setOpen(false); setShowBackgrounds(true) }}
+              className="flex min-h-11 w-full touch-manipulation items-center gap-3 rounded-xl px-3 text-left text-sm text-ink transition-colors duration-150 hover:bg-glass-strong"
+            >
+              <Wallpaper aria-hidden="true" className="size-4 text-ink-muted" />
+              Fondo de pantalla
+            </button>
+            <button
+              type="button"
+              role="menuitem"
               disabled={signingOut}
               onClick={handleSignOut}
-              className="flex min-h-11 w-full touch-manipulation items-center gap-3 rounded-xl px-3 text-left text-sm text-ink transition-colors duration-150 hover:bg-white/8 disabled:opacity-60"
+              className="flex min-h-11 w-full touch-manipulation items-center gap-3 rounded-xl px-3 text-left text-sm text-ink transition-colors duration-150 hover:bg-glass-strong disabled:opacity-60"
             >
               {signingOut ? (
                 <Spinner size="sm" decorative className="text-current" />
@@ -129,6 +140,7 @@ export function UserMenu() {
           </div>
         </div>
       ) : null}
+      <BackgroundModal open={showBackgrounds} onClose={() => setShowBackgrounds(false)} />
     </div>
   )
 }

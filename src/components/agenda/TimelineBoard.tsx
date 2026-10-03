@@ -34,7 +34,7 @@ export function TimelineBoard({
   const timedBlocks = blocks.filter((block) => block.start_time !== null)
 
   return (
-    <div className="grid grid-cols-[3rem_minmax(0,1fr)] items-start">
+    <div className="grid grid-cols-[5rem_minmax(0,1fr)] items-start">
       <HourGutter />
       <div
         ref={boardRef}

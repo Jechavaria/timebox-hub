@@ -1,181 +1,107 @@
-import { useMemo, useState } from 'react'
+import { useId, useMemo, useState } from 'react'
+import type { KeyboardEvent, ReactNode } from 'react'
 import clsx from 'clsx'
 import {
+  AlertTriangle,
   BarChart3,
+  CalendarRange,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   Clock,
   Flame,
+  Layers,
   PieChart,
+  RotateCcw,
   Sparkles,
+  Target,
   TrendingDown,
   TrendingUp,
 } from 'lucide-react'
 import { usePlanner } from '../../hooks/usePlanner.ts'
-import { useNow } from '../../hooks/useNow.ts'
-import { formatDuration, minutesToHM, timeToMinutes, toLocalDateString } from '../../lib/time.ts'
+import { useToday } from '../../hooks/useToday.ts'
+import { useAnalyticsRange } from '../../hooks/useAnalyticsRange.ts'
+import {
+  MONTH_LONG,
+  MONTH_SHORT,
+  PERIOD_OPTIONS,
+  WEEKDAY_SHORT_MONDAY_FIRST,
+  daysInMonth,
+  formatDayCompact,
+  formatRangeLabel,
+  getPeriodRange,
+  isDateInRange,
+  shiftAnchor,
+} from '../../lib/analyticsPeriods.ts'
+import type { AnalyticsPeriod } from '../../lib/analyticsPeriods.ts'
+import {
+  formatDuration,
+  formatHour12,
+  getWeekDates,
+  minutesToHM,
+  parseLocalDate,
+  timeToMinutes,
+} from '../../lib/time.ts'
+import type { LocalDateString, ScheduleBlock } from '../../types/domain.ts'
 import { Button } from '../ui/Button.tsx'
+import { IconButton } from '../ui/IconButton.tsx'
 import { Modal } from '../ui/Modal.tsx'
+import { Spinner } from '../ui/Spinner.tsx'
 
 interface AnalyticsModalProps {
   open: boolean
   onClose: () => void
 }
 
-type Period = 'today' | 'week'
+const NO_AREA_COLOR = 'var(--color-mute)'
+const PEAK_FIRST_HOUR = 6
+const PEAK_HOURS = 18 // 6:00 AM → 12:00 AM
+const FREE_DAY_START = 8 * 60
+const FREE_DAY_END = 22 * 60
+const MIN_FREE_SLOT = 15
+
+const PREV_LABEL: Record<AnalyticsPeriod, string> = {
+  day: 'Día anterior',
+  week: 'Semana anterior',
+  month: 'Mes anterior',
+  year: 'Año anterior',
+}
+
+const NEXT_LABEL: Record<AnalyticsPeriod, string> = {
+  day: 'Día siguiente',
+  week: 'Semana siguiente',
+  month: 'Mes siguiente',
+  year: 'Año siguiente',
+}
+
+const EMPTY_LABEL: Record<AnalyticsPeriod, string> = {
+  day: 'este día',
+  week: 'esta semana',
+  month: 'este mes',
+  year: 'este año',
+}
+
+function safeStartMinutes(block: ScheduleBlock): number | null {
+  if (!block.start_time) return null
+  try {
+    return timeToMinutes(block.start_time)
+  } catch {
+    return null
+  }
+}
+
+function signedDuration(minutes: number): string {
+  if (minutes === 0) return '0 min'
+  return `${minutes > 0 ? '+' : '−'}${formatDuration(Math.abs(minutes))}`
+}
 
 export function AnalyticsModal({ open, onClose }: AnalyticsModalProps) {
-  const { areas, schedule } = usePlanner()
-  const now = useNow({ intervalMs: 60_000 })
-  const today = toLocalDateString(now)
-  const [period, setPeriod] = useState<Period>('today')
-
-  const areasById = useMemo(() => new Map(areas.areas.map((a) => [a.id, a])), [areas.areas])
-
-  // Filtrar bloques según el período seleccionado
-  const filteredBlocks = useMemo(() => {
-    if (period === 'today') {
-      return schedule.blocks.filter((b) => b.scheduled_date === today)
-    }
-    return schedule.blocks
-  }, [schedule.blocks, period, today])
-
-  // 1. Métricas de resumen general y completitud
-  const summary = useMemo(() => {
-    const totalBlocks = filteredBlocks.length
-    const completedBlocks = filteredBlocks.filter((b) => b.is_completed)
-    const completionRate = totalBlocks > 0 ? Math.round((completedBlocks.length / totalBlocks) * 100) : 0
-
-    let plannedTotalMinutes = 0
-    let actualCompletedMinutes = 0
-    let plannedForCompletedMinutes = 0
-
-    for (const b of filteredBlocks) {
-      plannedTotalMinutes += b.planned_duration_minutes
-      if (b.is_completed) {
-        plannedForCompletedMinutes += b.planned_duration_minutes
-        actualCompletedMinutes += b.actual_duration_minutes ?? b.planned_duration_minutes
-      }
-    }
-
-    const discrepancy = actualCompletedMinutes - plannedForCompletedMinutes
-
-    return {
-      totalBlocks,
-      completedCount: completedBlocks.length,
-      completionRate,
-      plannedTotalMinutes,
-      actualCompletedMinutes,
-      discrepancy,
-    }
-  }, [filteredBlocks])
-
-  // 2. Distribución de tiempo por Ámbito
-  const areaDistribution = useMemo(() => {
-    const totals = new Map<string, { name: string; color: string; minutes: number }>()
-
-    for (const b of filteredBlocks) {
-      const area = b.area_id ? areasById.get(b.area_id) : null
-      const key = area ? area.id : '__no_area__'
-      const name = area ? area.name : 'Rutinas / General'
-      const color = area ? area.color : '#8a909c'
-      const current = totals.get(key) ?? { name, color, minutes: 0 }
-      current.minutes += b.planned_duration_minutes
-      totals.set(key, current)
-    }
-
-    const list = Array.from(totals.values()).sort((a, b) => b.minutes - a.minutes)
-    const totalMins = list.reduce((acc, curr) => acc + curr.minutes, 0)
-
-    return list.map((item) => ({
-      ...item,
-      percentage: totalMins > 0 ? Math.round((item.minutes / totalMins) * 100) : 0,
-    }))
-  }, [filteredBlocks, areasById])
-
-  // 3. Cálculo de horas pico de actividad (distribución por horas del día 06:00 a 23:00)
-  const hourlyActivity = useMemo(() => {
-    const hours = Array.from({ length: 18 }, (_, i) => {
-      const h = i + 6
-      const h12 = h % 12 === 0 ? 12 : h % 12
-      const ampm = h >= 12 ? 'PM' : 'AM'
-      return {
-        hour: h,
-        label: `${h12}:00 ${ampm}`,
-        shortLabel: `${h12}${ampm.toLowerCase()}`,
-        minutes: 0,
-      }
-    })
-
-    for (const b of filteredBlocks) {
-      if (!b.start_time) continue
-      const startMin = timeToMinutes(b.start_time)
-      const endMin = startMin + b.planned_duration_minutes
-
-      for (const h of hours) {
-        const slotStart = h.hour * 60
-        const slotEnd = slotStart + 60
-        const overlapStart = Math.max(startMin, slotStart)
-        const overlapEnd = Math.min(endMin, slotEnd)
-        if (overlapEnd > overlapStart) {
-          h.minutes += overlapEnd - overlapStart
-        }
-      }
-    }
-
-    let peakHour = hours[0]
-    for (const h of hours) {
-      if (h.minutes > peakHour.minutes) {
-        peakHour = h
-      }
-    }
-
-    const maxMinutes = Math.max(...hours.map((h) => h.minutes), 1)
-
-    return { hours, peakHour, maxMinutes }
-  }, [filteredBlocks])
-
-  // 4. Detección de bloques libres (ventanas de tiempo libre para hoy entre 08:00 y 22:00)
-  const freeSlots = useMemo(() => {
-    const todayBlocks = schedule.blocks
-      .filter((b) => b.scheduled_date === today && b.start_time !== null)
-      .map((b) => ({
-        start: timeToMinutes(b.start_time!),
-        end: timeToMinutes(b.start_time!) + b.planned_duration_minutes,
-        title: b.title,
-      }))
-      .sort((a, b) => a.start - b.start)
-
-    const dayStart = 8 * 60 // 08:00
-    const dayEnd = 22 * 60 // 22:00
-    const slots: { startMinutes: number; endMinutes: number; duration: number }[] = []
-
-    let cursor = dayStart
-    for (const b of todayBlocks) {
-      if (b.start > cursor) {
-        const gap = b.start - cursor
-        if (gap >= 15) {
-          slots.push({ startMinutes: cursor, endMinutes: b.start, duration: gap })
-        }
-      }
-      cursor = Math.max(cursor, b.end)
-    }
-
-    if (dayEnd > cursor) {
-      const gap = dayEnd - cursor
-      if (gap >= 15) {
-        slots.push({ startMinutes: cursor, endMinutes: dayEnd, duration: gap })
-      }
-    }
-
-    return slots
-  }, [schedule.blocks, today])
-
   return (
     <Modal
       open={open}
       onClose={onClose}
       title="Dashboard Analítico de Tiempo"
-      description="Métricas de rendimiento, distribución de ámbitos y horas pico (RF-E2)."
+      description="Métricas de rendimiento, distribución de ámbitos y horas pico por día, semana, mes o año."
       size="lg"
       footer={
         <div className="flex justify-end">
@@ -183,9 +109,224 @@ export function AnalyticsModal({ open, onClose }: AnalyticsModalProps) {
         </div>
       }
     >
-      <div className="space-y-6">
-        {/* Selector de Período */}
-        <div className="flex items-center justify-between border-b border-glass-border pb-3">
+      {/* Se monta solo con el modal abierto: el estado vuelve a "Día · Hoy" en cada apertura. */}
+      {open ? <AnalyticsDashboard /> : null}
+    </Modal>
+  )
+}
+
+interface TrendBucket {
+  key: string
+  label: string
+  showLabel: boolean
+  title: string
+  planned: number
+  completed: number
+  count: number
+  completedCount: number
+  isCurrent: boolean
+}
+
+function AnalyticsDashboard() {
+  const { areas } = usePlanner()
+  const today = useToday()
+  const [period, setPeriod] = useState<AnalyticsPeriod>('day')
+  const [anchor, setAnchor] = useState<LocalDateString>(today)
+  const tabsId = useId()
+  const dateInputId = useId()
+
+  const range = useMemo(() => getPeriodRange(period, anchor), [period, anchor])
+  const rangeLabel = formatRangeLabel(period, range)
+  const containsToday = isDateInRange(today, range)
+  const { blocks, isLoading, error, refresh } = useAnalyticsRange(range.start, range.end, true)
+
+  const areasById = useMemo(() => new Map(areas.areas.map((a) => [a.id, a])), [areas.areas])
+
+  // 1. Métricas de resumen general y completitud
+  const summary = useMemo(() => {
+    let plannedTotalMinutes = 0
+    let actualCompletedMinutes = 0
+    let plannedForCompletedMinutes = 0
+    let completedCount = 0
+
+    for (const b of blocks) {
+      plannedTotalMinutes += b.planned_duration_minutes
+      if (b.is_completed) {
+        completedCount += 1
+        plannedForCompletedMinutes += b.planned_duration_minutes
+        actualCompletedMinutes += b.actual_duration_minutes ?? b.planned_duration_minutes
+      }
+    }
+
+    const totalBlocks = blocks.length
+    return {
+      totalBlocks,
+      completedCount,
+      completionRate: totalBlocks > 0 ? Math.round((completedCount / totalBlocks) * 100) : 0,
+      plannedTotalMinutes,
+      actualCompletedMinutes,
+      discrepancy: actualCompletedMinutes - plannedForCompletedMinutes,
+    }
+  }, [blocks])
+
+  // 2. Distribución de tiempo por Ámbito
+  const areaDistribution = useMemo(() => {
+    const totals = new Map<string, { key: string; name: string; color: string; minutes: number }>()
+
+    for (const b of blocks) {
+      const area = b.area_id ? areasById.get(b.area_id) : null
+      const key = area ? area.id : '__no_area__'
+      const current = totals.get(key) ?? {
+        key,
+        name: area ? area.name : 'Rutinas / General',
+        color: area ? area.color : NO_AREA_COLOR,
+        minutes: 0,
+      }
+      current.minutes += b.planned_duration_minutes
+      totals.set(key, current)
+    }
+
+    const list = Array.from(totals.values()).sort((a, b) => b.minutes - a.minutes)
+    const totalMins = list.reduce((acc, curr) => acc + curr.minutes, 0)
+    return list.map((item) => ({
+      ...item,
+      percentage: totalMins > 0 ? Math.round((item.minutes / totalMins) * 100) : 0,
+    }))
+  }, [blocks, areasById])
+
+  // 3. Tendencia: un bucket por día (semana/mes) o por mes (año)
+  const trend = useMemo<TrendBucket[]>(() => {
+    if (period === 'day') return []
+
+    const buckets: TrendBucket[] = []
+    const indexByKey = new Map<string, number>()
+    const push = (bucket: Omit<TrendBucket, 'planned' | 'completed' | 'count' | 'completedCount'>) => {
+      indexByKey.set(bucket.key, buckets.length)
+      buckets.push({ ...bucket, planned: 0, completed: 0, count: 0, completedCount: 0 })
+    }
+
+    if (period === 'year') {
+      const year = parseLocalDate(range.start).getFullYear()
+      const currentMonthKey = today.slice(0, 7)
+      MONTH_SHORT.forEach((label, index) => {
+        const key = `${year}-${String(index + 1).padStart(2, '0')}`
+        push({
+          key,
+          label,
+          showLabel: true,
+          title: `${MONTH_LONG[index]} ${year}`,
+          isCurrent: key === currentMonthKey,
+        })
+      })
+    } else {
+      const start = parseLocalDate(range.start)
+      const count = period === 'week' ? 7 : daysInMonth(start.getFullYear(), start.getMonth())
+      getWeekDates(range.start, count).forEach((date, index) => {
+        const dayNumber = parseLocalDate(date).getDate()
+        push({
+          key: date,
+          label: period === 'week' ? WEEKDAY_SHORT_MONDAY_FIRST[index] : String(dayNumber),
+          showLabel: period === 'week' || dayNumber === 1 || dayNumber % 5 === 0,
+          title: formatDayCompact(date),
+          isCurrent: date === today,
+        })
+      })
+    }
+
+    const keyOf = (b: ScheduleBlock) => (period === 'year' ? b.scheduled_date.slice(0, 7) : b.scheduled_date)
+    for (const b of blocks) {
+      const index = indexByKey.get(keyOf(b))
+      if (index === undefined) continue
+      const bucket = buckets[index]
+      bucket.planned += b.planned_duration_minutes
+      bucket.count += 1
+      if (b.is_completed) {
+        bucket.completed += b.planned_duration_minutes
+        bucket.completedCount += 1
+      }
+    }
+    return buckets
+  }, [blocks, period, range.start, today])
+
+  const trendMax = useMemo(() => Math.max(1, ...trend.map((b) => b.planned)), [trend])
+
+  // 4. Horas pico de actividad (minutos programados por hora, 6:00 AM a 12:00 AM)
+  const hourlyActivity = useMemo(() => {
+    const hours = Array.from({ length: PEAK_HOURS }, (_, i) => {
+      const hour = i + PEAK_FIRST_HOUR
+      const h12 = hour % 12 === 0 ? 12 : hour % 12
+      return {
+        hour,
+        label: formatHour12(hour),
+        shortLabel: `${h12}${hour >= 12 ? 'pm' : 'am'}`,
+        minutes: 0,
+      }
+    })
+
+    for (const b of blocks) {
+      const startMin = safeStartMinutes(b)
+      if (startMin === null) continue
+      const endMin = startMin + b.planned_duration_minutes
+      for (const h of hours) {
+        const slotStart = h.hour * 60
+        const overlap = Math.min(endMin, slotStart + 60) - Math.max(startMin, slotStart)
+        if (overlap > 0) h.minutes += overlap
+      }
+    }
+
+    const peakHour = hours.reduce((peak, h) => (h.minutes > peak.minutes ? h : peak), hours[0])
+    const maxMinutes = Math.max(...hours.map((h) => h.minutes), 1)
+    return { hours, peakHour, maxMinutes }
+  }, [blocks])
+
+  // 5. Bloques libres del día seleccionado (8:00 AM a 10:00 PM) — solo en vista Día
+  const freeSlots = useMemo(() => {
+    if (period !== 'day') return []
+    const dayBlocks = blocks
+      .filter((b) => b.scheduled_date === range.start)
+      .flatMap((b) => {
+        const start = safeStartMinutes(b)
+        return start === null ? [] : [{ start, end: start + b.planned_duration_minutes }]
+      })
+      .sort((a, b) => a.start - b.start)
+
+    const slots: { startMinutes: number; endMinutes: number; duration: number }[] = []
+    let cursor = FREE_DAY_START
+    for (const b of dayBlocks) {
+      const gapEnd = Math.min(b.start, FREE_DAY_END)
+      if (gapEnd - cursor >= MIN_FREE_SLOT) {
+        slots.push({ startMinutes: cursor, endMinutes: gapEnd, duration: gapEnd - cursor })
+      }
+      cursor = Math.max(cursor, b.end)
+      if (cursor >= FREE_DAY_END) break
+    }
+    if (FREE_DAY_END - cursor >= MIN_FREE_SLOT) {
+      slots.push({ startMinutes: cursor, endMinutes: FREE_DAY_END, duration: FREE_DAY_END - cursor })
+    }
+    return slots
+  }, [blocks, period, range.start])
+
+  const selectPeriod = (next: AnalyticsPeriod) => setPeriod(next)
+
+  const handleTabKeyDown = (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
+    let nextIndex: number | null = null
+    if (event.key === 'ArrowRight') nextIndex = (index + 1) % PERIOD_OPTIONS.length
+    else if (event.key === 'ArrowLeft') nextIndex = (index - 1 + PERIOD_OPTIONS.length) % PERIOD_OPTIONS.length
+    else if (event.key === 'Home') nextIndex = 0
+    else if (event.key === 'End') nextIndex = PERIOD_OPTIONS.length - 1
+    if (nextIndex === null) return
+    event.preventDefault()
+    selectPeriod(PERIOD_OPTIONS[nextIndex].value)
+    document.getElementById(`${tabsId}-tab-${PERIOD_OPTIONS[nextIndex].value}`)?.focus()
+  }
+
+  const isEmpty = !isLoading && !error && blocks.length === 0
+
+  return (
+    <div className="space-y-5">
+      {/* Selector de período y navegación */}
+      <div className="space-y-3 border-b border-glass-border pb-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <span className="grid size-8 place-items-center rounded-xl bg-accent-soft text-accent">
               <BarChart3 className="size-4" aria-hidden="true" />
@@ -194,245 +335,454 @@ export function AnalyticsModal({ open, onClose }: AnalyticsModalProps) {
               Rango de análisis
             </span>
           </div>
-          <div className="flex rounded-xl border border-glass-border bg-glass p-0.5">
-            <button
-              type="button"
-              onClick={() => setPeriod('today')}
-              className={clsx(
-                'rounded-lg px-3 py-1 text-xs font-medium transition-colors',
-                period === 'today'
-                  ? 'bg-accent text-white shadow-sm'
-                  : 'text-ink-muted hover:text-ink',
-              )}
-            >
-              Hoy ({today})
-            </button>
-            <button
-              type="button"
-              onClick={() => setPeriod('week')}
-              className={clsx(
-                'rounded-lg px-3 py-1 text-xs font-medium transition-colors',
-                period === 'week'
-                  ? 'bg-accent text-white shadow-sm'
-                  : 'text-ink-muted hover:text-ink',
-              )}
-            >
-              Semana (7 días)
-            </button>
-          </div>
-        </div>
-
-        {/* Tarjetas de Métricas Clave */}
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <div className="rounded-2xl border border-glass-border bg-glass p-3.5">
-            <div className="flex items-center justify-between text-ink-muted">
-              <span className="text-xs font-medium">Bloques</span>
-              <CheckCircle2 className="size-4 text-accent" />
-            </div>
-            <p className="mt-2 text-xl font-bold tracking-tight text-ink sm:text-2xl">
-              {summary.completedCount} <span className="text-xs font-normal text-ink-muted">/ {summary.totalBlocks}</span>
-            </p>
-            <p className="mt-0.5 text-[11px] text-ink-faint">
-              {summary.completionRate}% completados
-            </p>
-          </div>
-
-          <div className="rounded-2xl border border-glass-border bg-glass p-3.5">
-            <div className="flex items-center justify-between text-ink-muted">
-              <span className="text-xs font-medium">Planificado</span>
-              <Clock className="size-4 text-ink-muted" />
-            </div>
-            <p className="mt-2 text-xl font-bold tracking-tight text-ink sm:text-2xl">
-              {formatDuration(summary.plannedTotalMinutes)}
-            </p>
-            <p className="mt-0.5 text-[11px] text-ink-faint">Carga asignada</p>
-          </div>
-
-          <div className="rounded-2xl border border-glass-border bg-glass p-3.5">
-            <div className="flex items-center justify-between text-ink-muted">
-              <span className="text-xs font-medium">Tiempo Real</span>
-              <Sparkles className="size-4 text-success" />
-            </div>
-            <p className="mt-2 text-xl font-bold tracking-tight text-success sm:text-2xl">
-              {formatDuration(summary.actualCompletedMinutes)}
-            </p>
-            <p className="mt-0.5 text-[11px] text-ink-faint">Ejecutado comprobado</p>
-          </div>
-
-          <div className="rounded-2xl border border-glass-border bg-glass p-3.5">
-            <div className="flex items-center justify-between text-ink-muted">
-              <span className="text-xs font-medium">Discrepancia</span>
-              {summary.discrepancy > 0 ? (
-                <TrendingUp className="size-4 text-warning" />
-              ) : summary.discrepancy < 0 ? (
-                <TrendingDown className="size-4 text-accent" />
-              ) : (
-                <CheckCircle2 className="size-4 text-success" />
-              )}
-            </div>
-            <p
-              className={clsx(
-                'mt-2 text-xl font-bold tracking-tight sm:text-2xl',
-                summary.discrepancy > 0
-                  ? 'text-warning'
-                  : summary.discrepancy < 0
-                    ? 'text-accent'
-                    : 'text-success',
-              )}
-            >
-              {summary.discrepancy === 0
-                ? '0m'
-                : `${summary.discrepancy > 0 ? '+' : ''}${formatDuration(summary.discrepancy)}`}
-            </p>
-            <p className="mt-0.5 text-[11px] text-ink-faint">
-              {summary.discrepancy === 0
-                ? 'Estimación exacta'
-                : summary.discrepancy > 0
-                  ? 'Más de lo planeado'
-                  : 'Ahorro de tiempo'}
-            </p>
-          </div>
-        </div>
-
-        {/* Sección: Distribución de Tiempo por Ámbito */}
-        <div className="rounded-2xl border border-glass-border bg-glass p-4">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <PieChart className="size-4 text-accent" />
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-ink">
-                Distribución por Ámbito
-              </h3>
-            </div>
-            <span className="text-xs text-ink-muted">
-              Total: {formatDuration(summary.plannedTotalMinutes)}
-            </span>
-          </div>
-
-          {areaDistribution.length === 0 ? (
-            <p className="py-4 text-center text-xs text-ink-muted">
-              No hay bloques programados para este período.
-            </p>
-          ) : (
-            <div className="space-y-3">
-              {areaDistribution.map((item) => (
-                <div key={item.name} className="space-y-1">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="flex items-center gap-2 font-medium text-ink">
-                      <span
-                        className="size-2.5 rounded-full"
-                        style={{ backgroundColor: item.color }}
-                      />
-                      {item.name}
-                    </span>
-                    <span className="tabular-nums text-ink-muted">
-                      {formatDuration(item.minutes)} ({item.percentage}%)
-                    </span>
-                  </div>
-                  <div className="h-2 w-full overflow-hidden rounded-full bg-white/6">
-                    <div
-                      className="h-full rounded-full transition-all duration-300"
-                      style={{
-                        width: `${item.percentage}%`,
-                        backgroundColor: item.color,
-                      }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Sección: Horas Pico de Actividad */}
-        <div className="rounded-2xl border border-glass-border bg-glass p-4">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <Flame className="size-4 text-warning" />
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-ink">
-                Horas Pico de Actividad
-              </h3>
-            </div>
-            {hourlyActivity.peakHour.minutes > 0 ? (
-              <span className="rounded-md bg-warning/15 px-2 py-0.5 text-xs font-semibold text-warning">
-                Pico: {hourlyActivity.peakHour.label} ({formatDuration(hourlyActivity.peakHour.minutes)})
-              </span>
-            ) : null}
-          </div>
-
-          <p className="mb-3 text-xs text-ink-muted">
-            Densidad de minutos programados por hora (de 6:00 AM a 11:00 PM):
-          </p>
-
-          <div className="flex h-20 items-end gap-1 overflow-x-auto pt-2">
-            {hourlyActivity.hours.map((h) => {
-              const heightPct = hourlyActivity.maxMinutes > 0
-                ? Math.round((h.minutes / hourlyActivity.maxMinutes) * 100)
-                : 0
-              const isPeak = h.hour === hourlyActivity.peakHour.hour && h.minutes > 0
+          <div
+            role="tablist"
+            aria-label="Período de análisis"
+            className="flex rounded-xl border border-glass-border bg-glass p-0.5"
+          >
+            {PERIOD_OPTIONS.map((option, index) => {
+              const selected = option.value === period
               return (
-                <div
-                  key={h.hour}
-                  className="flex flex-1 min-w-[20px] flex-col items-center gap-1"
-                  title={`${h.label}: ${formatDuration(h.minutes)} ocupados`}
+                <button
+                  key={option.value}
+                  id={`${tabsId}-tab-${option.value}`}
+                  type="button"
+                  role="tab"
+                  aria-selected={selected}
+                  aria-controls={`${tabsId}-panel`}
+                  tabIndex={selected ? 0 : -1}
+                  onClick={() => selectPeriod(option.value)}
+                  onKeyDown={(event) => handleTabKeyDown(event, index)}
+                  className={clsx(
+                    'min-h-8 rounded-lg px-3 text-xs font-medium transition-colors',
+                    selected ? 'bg-accent-soft text-accent shadow-sm' : 'text-ink-muted hover:text-ink',
+                  )}
                 >
-                  <div className="h-12 w-full flex items-end justify-center rounded-sm bg-white/4">
-                    <div
-                      className={clsx(
-                        'w-full rounded-sm transition-all duration-200',
-                        isPeak ? 'bg-warning shadow-[0_0_8px_rgb(246_196_83_/_0.5)]' : 'bg-accent/60',
-                      )}
-                      style={{ height: `${Math.max(heightPct, 4)}%` }}
-                    />
-                  </div>
-                  <span className="text-[9px] tabular-nums text-ink-faint">
-                    {h.shortLabel}
-                  </span>
-                </div>
+                  {option.label}
+                </button>
               )
             })}
           </div>
         </div>
 
-        {/* Sección: Detección Visual de Bloques Libres */}
-        <div className="rounded-2xl border border-glass-border bg-glass p-4">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2">
-              <Clock className="size-4 text-accent" />
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-ink">
-                Bloques Libres Detectados (Hoy)
-              </h3>
-            </div>
-            <span className="text-xs text-ink-muted">
-              Ventanas de 8:00 AM a 10:00 PM
-            </span>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex min-w-0 items-center gap-1">
+            <IconButton
+              label={PREV_LABEL[period]}
+              size="sm"
+              variant="glass"
+              onClick={() => setAnchor((current) => shiftAnchor(period, current, -1))}
+            >
+              <ChevronLeft />
+            </IconButton>
+            <p
+              className="min-w-0 truncate px-2 text-sm font-semibold tabular-nums text-ink sm:text-base"
+              aria-live="polite"
+            >
+              <CalendarRange className="mr-1.5 inline size-4 align-[-2px] text-accent" aria-hidden="true" />
+              {rangeLabel}
+            </p>
+            <IconButton
+              label={NEXT_LABEL[period]}
+              size="sm"
+              variant="glass"
+              onClick={() => setAnchor((current) => shiftAnchor(period, current, 1))}
+            >
+              <ChevronRight />
+            </IconButton>
           </div>
 
-          {freeSlots.length === 0 ? (
-            <p className="py-3 text-center text-xs text-ink-muted">
-              Jornada completa o sin bloques libres detectados en el día activo.
-            </p>
-          ) : (
-            <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-              {freeSlots.map((slot) => (
-                <div
-                  key={`${slot.startMinutes}-${slot.endMinutes}`}
-                  className="flex items-center justify-between rounded-xl border border-dashed border-success/30 bg-success/5 px-3 py-2 text-xs"
-                >
-                  <div className="flex items-center gap-2 text-ink">
-                    <span className="size-2 rounded-full bg-success" />
-                    <span className="font-semibold">
-                      {minutesToHM(slot.startMinutes)} – {minutesToHM(slot.endMinutes)}
-                    </span>
-                  </div>
-                  <span className="rounded-md bg-success/15 px-2 py-0.5 font-medium tabular-nums text-success">
-                    {formatDuration(slot.duration)} libre
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
+          <div className="flex items-center gap-2">
+            {period === 'day' || period === 'week' ? (
+              <>
+                <label htmlFor={dateInputId} className="sr-only">
+                  Elegir fecha
+                </label>
+                <input
+                  id={dateInputId}
+                  type="date"
+                  value={anchor}
+                  onChange={(event) => {
+                    if (event.target.value) setAnchor(event.target.value)
+                  }}
+                  className="glass-input min-h-9 px-2 py-1 text-xs tabular-nums"
+                />
+              </>
+            ) : null}
+            <Button
+              size="sm"
+              variant="ghost"
+              leadingIcon={<RotateCcw className="size-3.5" aria-hidden="true" />}
+              onClick={() => setAnchor(today)}
+              disabled={anchor === today}
+            >
+              Hoy
+            </Button>
+          </div>
         </div>
       </div>
-    </Modal>
+
+      <div
+        id={`${tabsId}-panel`}
+        role="tabpanel"
+        aria-labelledby={`${tabsId}-tab-${period}`}
+        aria-busy={isLoading || undefined}
+        className="space-y-5"
+      >
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center gap-3 py-16">
+            <Spinner size="lg" label={`Cargando métricas de ${rangeLabel}`} />
+            <p className="text-xs text-ink-muted">Cargando métricas…</p>
+          </div>
+        ) : error ? (
+          <div className="flex flex-col items-center gap-3 rounded-2xl border border-glass-border bg-glass px-4 py-10 text-center">
+            <AlertTriangle className="size-6 text-danger" aria-hidden="true" />
+            <p role="alert" className="max-w-sm text-sm text-ink">
+              {error}
+            </p>
+            <Button size="sm" onClick={refresh} leadingIcon={<RotateCcw className="size-3.5" aria-hidden="true" />}>
+              Reintentar
+            </Button>
+          </div>
+        ) : (
+          <>
+            {isEmpty ? (
+              <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-glass-border bg-glass px-4 py-10 text-center">
+                <span className="grid size-10 place-items-center rounded-2xl bg-accent-soft text-accent">
+                  <CalendarRange className="size-5" aria-hidden="true" />
+                </span>
+                <p className="text-sm font-medium text-ink">Sin bloques en {EMPTY_LABEL[period]}</p>
+                <p className="max-w-sm text-xs text-ink-muted">
+                  No hay bloques programados para {rangeLabel}. Planifica tu agenda o elige otro período.
+                </p>
+              </div>
+            ) : (
+              <>
+                {/* Tarjetas de Métricas Clave */}
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-6">
+                  <MetricCard
+                    className="sm:col-span-3"
+                    label="Planificado"
+                    icon={<Clock className="size-4 text-ink-muted" aria-hidden="true" />}
+                    value={formatDuration(summary.plannedTotalMinutes)}
+                    hint="Carga asignada"
+                  />
+                  <MetricCard
+                    className="sm:col-span-3"
+                    label="Tiempo real"
+                    icon={<Sparkles className="size-4 text-success" aria-hidden="true" />}
+                    value={formatDuration(summary.actualCompletedMinutes)}
+                    valueClassName="text-success"
+                    hint="Ejecutado en bloques completados"
+                  />
+                  <MetricCard
+                    className="sm:col-span-2"
+                    label="Completitud"
+                    icon={<Target className="size-4 text-accent" aria-hidden="true" />}
+                    value={`${summary.completionRate}%`}
+                    hint={
+                      <span className="mt-1.5 block h-1.5 w-full overflow-hidden rounded-full bg-glass-strong">
+                        <span
+                          className="block h-full rounded-full bg-accent transition-[width] duration-300"
+                          style={{ width: `${summary.completionRate}%` }}
+                        />
+                      </span>
+                    }
+                  />
+                  <MetricCard
+                    className="sm:col-span-2"
+                    label="Discrepancia"
+                    icon={
+                      summary.discrepancy > 0 ? (
+                        <TrendingUp className="size-4 text-warning" aria-hidden="true" />
+                      ) : summary.discrepancy < 0 ? (
+                        <TrendingDown className="size-4 text-accent" aria-hidden="true" />
+                      ) : (
+                        <CheckCircle2 className="size-4 text-success" aria-hidden="true" />
+                      )
+                    }
+                    value={signedDuration(summary.discrepancy)}
+                    valueClassName={
+                      summary.discrepancy > 0
+                        ? 'text-warning'
+                        : summary.discrepancy < 0
+                          ? 'text-accent'
+                          : 'text-success'
+                    }
+                    hint={
+                      summary.discrepancy === 0
+                        ? 'Real vs planeado: exacto'
+                        : summary.discrepancy > 0
+                          ? 'Más de lo planeado'
+                          : 'Menos de lo planeado'
+                    }
+                  />
+                  <MetricCard
+                    className="col-span-2 sm:col-span-2"
+                    label="Bloques"
+                    icon={<Layers className="size-4 text-accent" aria-hidden="true" />}
+                    value={
+                      <>
+                        {summary.completedCount}{' '}
+                        <span className="text-xs font-normal text-ink-muted">/ {summary.totalBlocks}</span>
+                      </>
+                    }
+                    hint="Completados / programados"
+                  />
+                </div>
+
+                {/* Tendencia por día / mes */}
+                {period !== 'day' ? (
+                  <Section
+                    icon={<BarChart3 className="size-4 text-accent" aria-hidden="true" />}
+                    title={period === 'year' ? 'Tendencia mensual' : 'Tendencia diaria'}
+                    aside={
+                      <span className="flex items-center gap-3 text-[11px] text-ink-muted">
+                        <span className="flex items-center gap-1.5">
+                          <span className="size-2.5 rounded-sm border border-accent/40 bg-accent-soft" aria-hidden="true" />
+                          Planificado
+                        </span>
+                        <span className="flex items-center gap-1.5">
+                          <span className="size-2.5 rounded-sm bg-accent" aria-hidden="true" />
+                          Completado
+                        </span>
+                      </span>
+                    }
+                  >
+                    <p className="mb-2 text-[11px] text-ink-faint">Máximo: {formatDuration(trendMax)}</p>
+                    <ul
+                      aria-label={`Tendencia de ${rangeLabel}: tiempo planificado y completado`}
+                      className={clsx('flex h-36 items-stretch', period === 'month' ? 'gap-0.5' : 'gap-1.5')}
+                    >
+                      {trend.map((bucket) => {
+                        const plannedPct = (bucket.planned / trendMax) * 100
+                        const completedPct = (bucket.completed / trendMax) * 100
+                        const description = `${bucket.title}: ${formatDuration(bucket.planned)} planificado, ${formatDuration(bucket.completed)} completado (${bucket.completedCount}/${bucket.count} bloques)`
+                        return (
+                          <li
+                            key={bucket.key}
+                            title={description}
+                            className="flex min-w-0 flex-1 flex-col items-center gap-1"
+                          >
+                            <span className="sr-only">{description}</span>
+                            <div
+                              aria-hidden="true"
+                              className="relative flex w-full flex-1 items-end overflow-hidden rounded-md bg-glass"
+                            >
+                              {bucket.planned > 0 ? (
+                                <div
+                                  className="absolute inset-x-0 bottom-0 rounded-md border border-accent/40 bg-accent-soft transition-[height] duration-300"
+                                  style={{ height: `${Math.max(plannedPct, 3)}%` }}
+                                />
+                              ) : null}
+                              {bucket.completed > 0 ? (
+                                <div
+                                  className="absolute inset-x-0 bottom-0 rounded-md bg-accent transition-[height] duration-300"
+                                  style={{ height: `${Math.max(completedPct, 3)}%` }}
+                                />
+                              ) : null}
+                            </div>
+                            <span
+                              aria-hidden="true"
+                              className={clsx(
+                                'h-3.5 text-[10px] leading-none tabular-nums',
+                                bucket.isCurrent ? 'font-semibold text-accent' : 'text-ink-faint',
+                              )}
+                            >
+                              {bucket.showLabel ? bucket.label : ''}
+                            </span>
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  </Section>
+                ) : null}
+
+                {/* Distribución de Tiempo por Ámbito */}
+                <Section
+                  icon={<PieChart className="size-4 text-accent" aria-hidden="true" />}
+                  title="Distribución por Ámbito"
+                  aside={
+                    <span className="text-xs text-ink-muted">
+                      Total: {formatDuration(summary.plannedTotalMinutes)}
+                    </span>
+                  }
+                >
+                  <ul className="space-y-3">
+                    {areaDistribution.map((item) => (
+                      <li key={item.key} className="space-y-1">
+                        <div className="flex items-center justify-between gap-3 text-xs">
+                          <span className="flex min-w-0 items-center gap-2 font-medium text-ink">
+                            <span
+                              className="size-2.5 shrink-0 rounded-full"
+                              style={{ backgroundColor: item.color }}
+                              aria-hidden="true"
+                            />
+                            <span className="truncate">{item.name}</span>
+                          </span>
+                          <span className="shrink-0 tabular-nums text-ink-muted">
+                            {formatDuration(item.minutes)} ({item.percentage}%)
+                          </span>
+                        </div>
+                        <div className="h-2 w-full overflow-hidden rounded-full bg-glass-strong" aria-hidden="true">
+                          <div
+                            className="h-full rounded-full transition-[width] duration-300"
+                            style={{ width: `${item.percentage}%`, backgroundColor: item.color }}
+                          />
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </Section>
+
+                {/* Horas Pico de Actividad */}
+                <Section
+                  icon={<Flame className="size-4 text-warning" aria-hidden="true" />}
+                  title="Horas Pico de Actividad"
+                  aside={
+                    hourlyActivity.peakHour.minutes > 0 ? (
+                      <span className="rounded-md bg-warning/15 px-2 py-0.5 text-xs font-semibold text-warning">
+                        Pico: {hourlyActivity.peakHour.label} ({formatDuration(hourlyActivity.peakHour.minutes)})
+                      </span>
+                    ) : null
+                  }
+                >
+                  <p className="mb-3 text-xs text-ink-muted">
+                    {period === 'day'
+                      ? 'Minutos programados por hora (de 6:00 AM a 12:00 AM):'
+                      : 'Minutos programados por hora, acumulados en el período (de 6:00 AM a 12:00 AM):'}
+                  </p>
+                  {hourlyActivity.peakHour.minutes === 0 ? (
+                    <p className="py-3 text-center text-xs text-ink-muted">
+                      Ningún bloque tiene hora de inicio asignada en este período.
+                    </p>
+                  ) : (
+                    <ul
+                      aria-label="Densidad de actividad por hora"
+                      className="flex h-20 items-end gap-1 overflow-x-auto pt-2"
+                    >
+                      {hourlyActivity.hours.map((h) => {
+                        const heightPct = Math.round((h.minutes / hourlyActivity.maxMinutes) * 100)
+                        const isPeak = h.hour === hourlyActivity.peakHour.hour
+                        const description = `${h.label}: ${formatDuration(h.minutes)} ocupados`
+                        return (
+                          <li
+                            key={h.hour}
+                            className="flex min-w-[20px] flex-1 flex-col items-center gap-1"
+                            title={description}
+                          >
+                            <span className="sr-only">{description}</span>
+                            <div
+                              aria-hidden="true"
+                              className="flex h-12 w-full items-end justify-center rounded-sm bg-glass"
+                            >
+                              <div
+                                className={clsx(
+                                  'w-full rounded-sm transition-[height] duration-200',
+                                  isPeak ? 'bg-warning' : 'bg-accent/60',
+                                )}
+                                style={{ height: `${h.minutes > 0 ? Math.max(heightPct, 4) : 0}%` }}
+                              />
+                            </div>
+                            <span aria-hidden="true" className="text-[9px] tabular-nums text-ink-faint">
+                              {h.shortLabel}
+                            </span>
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  )}
+                </Section>
+              </>
+            )}
+
+            {/* Detección de Bloques Libres (solo vista Día) */}
+            {period === 'day' ? (
+              <Section
+                icon={<Clock className="size-4 text-accent" aria-hidden="true" />}
+                title={`Bloques libres${containsToday ? ' (hoy)' : ''}`}
+                aside={<span className="text-xs text-ink-muted">Ventanas de 8:00 AM a 10:00 PM</span>}
+              >
+                {freeSlots.length === 0 ? (
+                  <p className="py-3 text-center text-xs text-ink-muted">
+                    Jornada completa: no se detectaron bloques libres de al menos {MIN_FREE_SLOT} min.
+                  </p>
+                ) : (
+                  <ul className="mt-1 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    {freeSlots.map((slot) => (
+                      <li
+                        key={`${slot.startMinutes}-${slot.endMinutes}`}
+                        className="flex items-center justify-between gap-2 rounded-xl border border-dashed border-success/30 bg-success/5 px-3 py-2 text-xs"
+                      >
+                        <span className="flex items-center gap-2 text-ink">
+                          <span className="size-2 rounded-full bg-success" aria-hidden="true" />
+                          <span className="font-semibold tabular-nums">
+                            {minutesToHM(slot.startMinutes)} – {minutesToHM(slot.endMinutes)}
+                          </span>
+                        </span>
+                        <span className="rounded-md bg-success/15 px-2 py-0.5 font-medium tabular-nums text-success">
+                          {formatDuration(slot.duration)} libre
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </Section>
+            ) : null}
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
+interface MetricCardProps {
+  label: string
+  icon: ReactNode
+  value: ReactNode
+  hint: ReactNode
+  valueClassName?: string
+  className?: string
+}
+
+function MetricCard({ label, icon, value, hint, valueClassName, className }: MetricCardProps) {
+  return (
+    <div className={clsx('min-w-0 rounded-2xl border border-glass-border bg-glass p-3.5', className)}>
+      <div className="flex items-center justify-between gap-2 text-ink-muted">
+        <span className="truncate text-xs font-medium">{label}</span>
+        {icon}
+      </div>
+      <p
+        className={clsx(
+          'mt-2 truncate text-xl font-bold tracking-tight tabular-nums sm:text-2xl',
+          valueClassName ?? 'text-ink',
+        )}
+      >
+        {value}
+      </p>
+      <div className="mt-0.5 text-[11px] text-ink-faint">{hint}</div>
+    </div>
+  )
+}
+
+interface SectionProps {
+  icon: ReactNode
+  title: string
+  aside?: ReactNode
+  children: ReactNode
+}
+
+function Section({ icon, title, aside, children }: SectionProps) {
+  return (
+    <section className="rounded-2xl border border-glass-border bg-glass p-4">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          {icon}
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-ink">{title}</h3>
+        </div>
+        {aside}
+      </div>
+      {children}
+    </section>
   )
 }

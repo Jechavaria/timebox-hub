@@ -124,7 +124,7 @@ export function AuthModal() {
         role="tablist"
         aria-label="Acceso"
         onKeyDown={handleTabKeyDown}
-        className="mb-5 grid grid-cols-2 gap-1 rounded-2xl bg-white/5 p-1"
+        className="mb-5 grid grid-cols-2 gap-1 rounded-2xl bg-glass p-1"
       >
         {AUTH_MODES.map((tabMode) => (
           <button
@@ -138,7 +138,7 @@ export function AuthModal() {
             onClick={() => switchMode(tabMode)}
             className={clsx(
               'min-h-10 rounded-xl px-3 text-sm font-medium transition-[background-color,color] duration-200',
-              mode === tabMode ? 'bg-white/12 text-ink' : 'text-ink-muted hover:text-ink',
+              mode === tabMode ? 'bg-glass-strong text-ink shadow-sm' : 'text-ink-muted hover:text-ink',
             )}
           >
             {MODE_COPY[tabMode].tab}

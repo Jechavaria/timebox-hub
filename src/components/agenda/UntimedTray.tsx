@@ -25,7 +25,7 @@ export function UntimedTray({ date, blocks, areasById, onDelete, onOpen, onToggl
       aria-label={`Bloques sin hora para ${date}`}
       className={clsx(
         'flex min-h-16 shrink-0 flex-col gap-2 border-t border-glass-border px-3 py-2.5 transition-colors',
-        isOver ? 'bg-accent-soft' : 'bg-black/10',
+        isOver ? 'bg-accent-soft' : 'bg-canvas/20',
       )}
     >
       <div className="flex items-center gap-2 text-xs font-medium text-ink-muted">

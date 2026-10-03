@@ -186,7 +186,7 @@ export function TaskModal({ task, onClose, onSave }: TaskModalProps) {
               className="glass-input"
             >
               {areas.areas.map((area) => (
-                <option key={area.id} value={area.id} className="bg-[#11141c]">{area.name}</option>
+                <option key={area.id} value={area.id}>{area.name}</option>
               ))}
             </select>
           </div>

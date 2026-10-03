@@ -4,6 +4,7 @@ import { AnalyticsModal } from '../analytics/AnalyticsModal.tsx'
 import { Button } from '../ui/Button.tsx'
 import { GlassPanel } from '../ui/GlassPanel.tsx'
 import { Clock } from './Clock.tsx'
+import { ThemeSwitch } from './ThemeSwitch.tsx'
 import { UserMenu } from './UserMenu.tsx'
 
 export function Navbar() {
@@ -37,6 +38,7 @@ export function Navbar() {
         >
           <span className="hidden sm:inline">Métricas</span>
         </Button>
+        <ThemeSwitch />
         <UserMenu />
       </div>
 

@@ -19,11 +19,11 @@ export function NowNeedle({ date, now, visible }: NowNeedleProps) {
       style={style}
       className="pointer-events-none absolute inset-x-0 z-20 flex h-0 items-center"
     >
-      <span className="absolute -left-[4.2rem] -top-2 rounded-md bg-danger px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-white shadow-sm">
+      <span className="absolute right-full top-1/2 mr-1.5 -translate-y-1/2 whitespace-nowrap rounded-md bg-danger px-1.5 py-0.5 text-[10px] font-semibold leading-none tabular-nums text-white shadow-[0_0_10px_color-mix(in_oklab,var(--color-danger)_45%,transparent)]">
         {formatClockTime(now)}
       </span>
-      <span className="h-0.5 w-full bg-danger shadow-[0_0_10px_rgb(255_123_123_/_0.45)]" />
-      <span className="absolute -left-1 size-2 rounded-full border-2 border-[#0b0e16] bg-danger" />
+      <span className="h-0.5 w-full bg-danger shadow-[0_0_10px_color-mix(in_oklab,var(--color-danger)_45%,transparent)]" />
+      <span className="absolute -left-1 size-2 rounded-full border-2 border-canvas bg-danger" />
     </div>
   )
 }

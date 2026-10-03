@@ -15,9 +15,9 @@ const BASE_CLASS =
   'inline-flex shrink-0 select-none touch-manipulation items-center justify-center rounded-xl transition-[background-color,border-color,color,scale,opacity] duration-200 ease-out-soft active:scale-90 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0'
 
 const VARIANT_CLASS: Record<IconButtonVariant, string> = {
-  ghost: 'text-ink-muted hover:bg-white/8 hover:text-ink',
-  glass: 'border border-glass-border bg-glass-strong text-ink hover:bg-white/14',
-  danger: 'text-danger hover:bg-danger/15',
+  ghost: 'text-ink-muted hover:bg-glass-strong hover:text-ink',
+  glass: 'border border-glass-border bg-glass-strong text-ink hover:border-accent/40',
+  danger: 'text-danger hover:bg-danger/15 [--glow-color:var(--color-danger)]',
 }
 
 const SIZE_CLASS: Record<IconButtonSize, string> = {

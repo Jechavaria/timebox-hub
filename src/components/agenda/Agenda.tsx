@@ -170,7 +170,7 @@ export function Agenda() {
                 'flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition-all duration-150',
                 view === 'today-tomorrow'
                   ? 'bg-accent text-white shadow-sm'
-                  : 'text-ink-muted hover:text-ink hover:bg-white/5',
+                  : 'text-ink-muted hover:text-ink hover:bg-glass-strong',
               )}
             >
               <Columns2 className="size-3.5" aria-hidden="true" />
@@ -186,7 +186,7 @@ export function Agenda() {
                 'flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition-all duration-150',
                 view === 'week'
                   ? 'bg-accent text-white shadow-sm'
-                  : 'text-ink-muted hover:text-ink hover:bg-white/5',
+                  : 'text-ink-muted hover:text-ink hover:bg-glass-strong',
               )}
             >
               <CalendarDays className="size-3.5" aria-hidden="true" />

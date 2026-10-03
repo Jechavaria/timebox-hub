@@ -4,7 +4,29 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#06080c" />
+    <meta name="theme-color" content="#0b0d14" />
+    <meta name="color-scheme" content="light dark" />
+    <script>
+      // Aplica tema y color de acento guardados antes del primer pintado (evita parpadeos).
+      (function () {
+        var root = document.documentElement;
+        try {
+          var prefs = JSON.parse(localStorage.getItem('timebox_appearance') || '{}');
+          var theme = prefs.theme === 'light' || prefs.theme === 'dark'
+            ? prefs.theme
+            : (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+          root.dataset.theme = theme;
+          document.querySelector('meta[name="color-scheme"]').content = theme;
+          if (prefs.accent && typeof prefs.accent.h === 'number' && typeof prefs.accent.c === 'number') {
+            root.style.setProperty('--accent-h', String(prefs.accent.h));
+            root.style.setProperty('--accent-c', String(prefs.accent.c));
+          }
+          if (typeof prefs.dim === 'number') root.style.setProperty('--bg-dim', String(prefs.dim));
+        } catch (error) {
+          root.dataset.theme = 'dark';
+        }
+      })();
+    </script>
     <meta name="description" content="TimeBox Hub: gestor háptico de tiempo y tareas basado en timeboxing." />
     <link rel="manifest" href="/manifest.webmanifest" />
     <meta name="mobile-web-app-capable" content="yes" />

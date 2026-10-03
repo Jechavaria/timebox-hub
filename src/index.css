@@ -1,21 +1,33 @@
 @import "tailwindcss";
 
+/*
+ * Intensidad de la luz que emiten los botones sobre las superficies acrílicas.
+ * Registrada para poder interpolarla con transiciones (fade-in / pulso al hacer clic).
+ */
+@property --glow-alpha {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0;
+}
+
 @theme static {
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
 
-  --color-canvas: #06080c;
+  /* Los colores principales dependen del tono de acento (--accent-h), que cambia con el fondo elegido. */
+  --color-canvas: oklch(0.15 0.03 var(--accent-h));
+  --color-surface: oklch(0.21 0.025 var(--accent-h));
   --color-ink: #f3f5fa;
-  --color-ink-muted: #a5adbd;
-  --color-ink-faint: #727a8a;
+  --color-ink-muted: #aab1c0;
+  --color-ink-faint: #7b8394;
 
   --color-glass: rgb(255 255 255 / 0.055);
   --color-glass-strong: rgb(255 255 255 / 0.09);
   --color-glass-border: rgb(255 255 255 / 0.11);
-  --color-popover: rgb(17 20 28 / 0.86);
+  --color-popover: oklch(0.19 0.025 var(--accent-h) / 0.88);
 
-  --color-accent: #8b93ff;
-  --color-accent-strong: #5a62ee;
-  --color-accent-soft: rgb(139 147 255 / 0.16);
+  --color-accent: oklch(0.75 var(--accent-c) var(--accent-h));
+  --color-accent-strong: oklch(0.56 calc(var(--accent-c) + 0.04) var(--accent-h));
+  --color-accent-soft: oklch(0.75 var(--accent-c) var(--accent-h) / 0.16);
   --color-danger: #ff7b7b;
   --color-success: #5fd9a0;
   --color-warning: #f6c453;
@@ -79,6 +91,29 @@
   :root {
     color-scheme: dark;
 
+    /* Tono y croma del acento: los sobreescribe el selector de fondos (estilo inline en <html>). */
+    --accent-h: 277;
+    --accent-c: 0.14;
+
+    /* Atenuación aplicada sobre fondos de imagen/video (0 a 0.85). */
+    --bg-dim: 0.45;
+    --bg-scrim-rgb: 8 10 16;
+
+    /* Luz ambiental del fondo por defecto. */
+    --ambient-l: 0.42;
+    --ambient-a: 0.5;
+    --ambient-base-from: oklch(0.17 0.045 var(--accent-h));
+    --ambient-base-to: oklch(0.12 0.035 calc(var(--accent-h) + 45));
+
+    /* Luz de los botones sobre el acrílico (posición en el viewport la actualiza JS). */
+    --pointer-x: -100vw;
+    --pointer-y: -100vh;
+    --glow-color: var(--color-accent);
+    --light-color: var(--color-accent);
+    --glow-alpha: 0.035;
+    --light-radius: 320px;
+    transition: --glow-alpha 320ms var(--ease-out-soft);
+
     --glass-shadow:
       inset 0 1px 0 0 rgb(255 255 255 / 0.07), 0 12px 32px -12px rgb(0 0 0 / 0.65),
       0 2px 6px -2px rgb(0 0 0 / 0.5);
@@ -92,8 +127,58 @@
     --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .09 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   }
 
+  :root[data-glow="hover"] {
+    --glow-alpha: 0.2;
+  }
+
+  :root[data-glow="press"] {
+    --glow-alpha: 0.42;
+    transition-duration: 70ms;
+  }
+
+  /* ---------- Modo claro ---------- */
+  :root[data-theme="light"] {
+    color-scheme: light;
+
+    --color-canvas: oklch(0.95 0.018 var(--accent-h));
+    --color-surface: #ffffff;
+    --color-ink: #141823;
+    --color-ink-muted: #465066;
+    --color-ink-faint: #687185;
+
+    --color-glass: rgb(255 255 255 / 0.5);
+    --color-glass-strong: rgb(255 255 255 / 0.72);
+    --color-glass-border: rgb(24 30 48 / 0.12);
+    --color-popover: rgb(251 252 255 / 0.9);
+
+    --color-accent: oklch(0.52 calc(var(--accent-c) + 0.04) var(--accent-h));
+    --color-accent-strong: oklch(0.5 calc(var(--accent-c) + 0.06) var(--accent-h));
+    --color-accent-soft: oklch(0.55 calc(var(--accent-c) + 0.02) var(--accent-h) / 0.14);
+    --color-danger: #cf3f3f;
+    --color-success: #138a58;
+    --color-warning: #9a6200;
+    --color-mute: #8a909c;
+
+    --bg-scrim-rgb: 244 246 251;
+    --ambient-l: 0.82;
+    --ambient-a: 0.55;
+    --ambient-base-from: oklch(0.96 0.02 var(--accent-h));
+    --ambient-base-to: oklch(0.92 0.03 calc(var(--accent-h) + 45));
+
+    --glass-shadow:
+      inset 0 1px 0 0 rgb(255 255 255 / 0.75), 0 14px 32px -16px rgb(30 40 70 / 0.28),
+      0 2px 6px -2px rgb(30 40 70 / 0.12);
+    --block-shadow:
+      inset 0 1px 0 0 rgb(255 255 255 / 0.6), inset 0 -1px 0 0 rgb(0 0 0 / 0.06),
+      0 8px 16px -10px rgb(30 40 70 / 0.35);
+    --float-shadow:
+      inset 0 1px 0 0 rgb(255 255 255 / 0.8), 0 28px 60px -20px rgb(30 40 70 / 0.4),
+      0 6px 14px -6px rgb(30 40 70 / 0.18);
+  }
+
   html {
     background-color: var(--color-canvas);
+    accent-color: var(--color-accent);
   }
 
   body {
@@ -106,26 +191,49 @@
     text-rendering: optimizeLegibility;
   }
 
+  /* Fondo por defecto: gradientes oscuros y suaves teñidos por el tono de acento. */
   body::before {
     content: "";
     position: fixed;
     inset: 0;
-    z-index: -1;
+    z-index: -2;
     pointer-events: none;
     background:
-      radial-gradient(52rem 34rem at 8% -8%, rgb(99 102 241 / 0.26), transparent 62%),
-      radial-gradient(44rem 32rem at 98% 6%, rgb(168 85 247 / 0.18), transparent 60%),
-      radial-gradient(50rem 34rem at 50% 112%, rgb(20 184 166 / 0.16), transparent 62%);
+      radial-gradient(56rem 38rem at 6% -10%, oklch(var(--ambient-l) 0.15 var(--accent-h) / var(--ambient-a)), transparent 62%),
+      radial-gradient(48rem 34rem at 100% 2%, oklch(var(--ambient-l) 0.14 calc(var(--accent-h) + 55) / calc(var(--ambient-a) * 0.75)), transparent 60%),
+      radial-gradient(54rem 36rem at 45% 115%, oklch(var(--ambient-l) 0.12 calc(var(--accent-h) - 75) / calc(var(--ambient-a) * 0.7)), transparent 62%),
+      linear-gradient(160deg, var(--ambient-base-from), var(--ambient-base-to));
   }
 
   * {
     scrollbar-width: thin;
-    scrollbar-color: rgb(255 255 255 / 0.22) transparent;
+    scrollbar-color: color-mix(in oklab, var(--color-ink) 22%, transparent) transparent;
+  }
+
+  /* Las listas desplegables nativas usan fondos sólidos legibles en ambos modos. */
+  select {
+    color-scheme: dark;
+  }
+
+  :root[data-theme="light"] select {
+    color-scheme: light;
+  }
+
+  select option,
+  select optgroup {
+    background-color: #1a1e29;
+    color: #f3f5fa;
+  }
+
+  :root[data-theme="light"] select option,
+  :root[data-theme="light"] select optgroup {
+    background-color: #ffffff;
+    color: #141823;
   }
 
   ::selection {
-    background: rgb(139 147 255 / 0.4);
-    color: #fff;
+    background: color-mix(in oklab, var(--color-accent) 40%, transparent);
+    color: var(--color-ink);
   }
 
   :focus-visible {
@@ -134,13 +242,16 @@
   }
 }
 
+/* Capa de luz que siguen todas las superficies acrílicas (attachment fixed = coordenadas del viewport). */
 @utility glass-panel {
   @apply backdrop-blur-md backdrop-saturate-150;
   border: 1px solid var(--color-glass-border);
   border-radius: var(--radius-glass);
   background-color: var(--color-glass);
   background-image:
+    radial-gradient(var(--light-radius) circle at var(--pointer-x) var(--pointer-y), color-mix(in oklab, var(--light-color) calc(var(--glow-alpha) * 100%), transparent), transparent),
     var(--grain), linear-gradient(180deg, rgb(255 255 255 / 0.05), rgb(255 255 255 / 0.01));
+  background-attachment: fixed, scroll, scroll;
   box-shadow: var(--glass-shadow);
 }
 
@@ -149,7 +260,10 @@
   border: 1px solid var(--color-glass-border);
   border-radius: var(--radius-glass);
   background-color: var(--color-popover);
-  background-image: var(--grain);
+  background-image:
+    radial-gradient(var(--light-radius) circle at var(--pointer-x) var(--pointer-y), color-mix(in oklab, var(--light-color) calc(var(--glow-alpha) * 70%), transparent), transparent),
+    var(--grain);
+  background-attachment: fixed, scroll;
   box-shadow: var(--float-shadow);
 }
 
@@ -157,9 +271,11 @@
   --block-color: var(--area-color, var(--color-accent));
   border: 1px solid color-mix(in oklab, var(--block-color) 48%, rgb(255 255 255 / 0.14));
   border-radius: var(--radius-block);
-  background-color: color-mix(in oklab, var(--block-color) 26%, rgb(14 17 25 / 0.62));
+  background-color: color-mix(in oklab, var(--block-color) 26%, color-mix(in oklab, var(--color-canvas) 62%, transparent));
   background-image:
+    radial-gradient(calc(var(--light-radius) * 0.75) circle at var(--pointer-x) var(--pointer-y), color-mix(in oklab, var(--light-color) calc(var(--glow-alpha) * 80%), transparent), transparent),
     var(--grain), linear-gradient(180deg, rgb(255 255 255 / 0.09), rgb(255 255 255 / 0) 58%);
+  background-attachment: fixed, scroll, scroll;
   box-shadow:
     inset 4px 0 0 0 var(--block-color),
     var(--block-shadow);
@@ -184,8 +300,8 @@
   padding: 0 0.875rem;
   border: 1px solid var(--color-glass-border);
   border-radius: 0.875rem;
-  background-color: rgb(255 255 255 / 0.05);
-  box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.35);
+  background-color: color-mix(in oklab, var(--color-glass-strong) 70%, transparent);
+  box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.2);
   color: var(--color-ink);
   transition-property: border-color, background-color, box-shadow;
   transition-duration: 160ms;
@@ -199,7 +315,7 @@
     border-color: var(--color-accent);
     box-shadow:
       0 0 0 3px var(--color-accent-soft),
-      inset 0 1px 2px rgb(0 0 0 / 0.35);
+      inset 0 1px 2px rgb(0 0 0 / 0.2);
   }
 
   &:disabled {
@@ -213,7 +329,7 @@
 
   @media (hover: hover) {
     &:hover:not(:focus-visible) {
-      border-color: rgb(255 255 255 / 0.22);
+      border-color: color-mix(in oklab, var(--color-ink) 22%, transparent);
     }
   }
 }
@@ -232,11 +348,45 @@
   }
 }
 
+/*
+ * Brillo (glow) de todos los elementos clicables.
+ * Sin capa a propósito: debe prevalecer sobre las utilidades de Tailwind en hover/active.
+ * [data-pulse] lo pone JS durante ~260 ms tras un clic para que el destello se note aunque el clic sea corto.
+ */
+:where(button, a[href], [role="button"], summary):not(:disabled) {
+  transition-property: background-color, border-color, color, filter, opacity, scale, transform, box-shadow;
+  transition-duration: 220ms;
+  transition-timing-function: var(--ease-out-soft);
+}
+
+@media (hover: hover) {
+  :where(button, a[href], [role="button"], summary):not(:disabled):hover {
+    box-shadow:
+      0 0 0 1px color-mix(in oklab, var(--glow-color) 50%, transparent),
+      0 0 14px -1px color-mix(in oklab, var(--glow-color) 55%, transparent),
+      0 0 30px -6px color-mix(in oklab, var(--glow-color) 45%, transparent);
+  }
+}
+
+:where(button, a[href], [role="button"], summary):not(:disabled):is(:active, [data-pulse]) {
+  box-shadow:
+    0 0 0 1px color-mix(in oklab, var(--glow-color) 85%, transparent),
+    0 0 20px 1px color-mix(in oklab, var(--glow-color) 70%, transparent),
+    0 0 46px 4px color-mix(in oklab, var(--glow-color) 50%, transparent);
+  filter: brightness(1.15);
+  transition-duration: 60ms;
+}
+
 @media (prefers-reduced-motion: reduce) {
   :root {
     --animate-pop-in: none;
     --animate-sheet-in: none;
     --animate-fade-in: none;
     --animate-toast-in: none;
+    transition: none;
+  }
+
+  :where(button, a[href], [role="button"], summary) {
+    transition-duration: 0ms !important;
   }
 }

@@ -60,7 +60,7 @@ export function NewTaskInline({ areaId, onCreate }: NewTaskInlineProps) {
           className="glass-input w-[5.25rem] px-2 text-sm tabular-nums"
         >
           {DURATION_OPTIONS.map((minutes) => (
-            <option key={minutes} value={minutes} className="bg-[#11141c]">
+            <option key={minutes} value={minutes}>
               {minutes >= 60 && minutes % 60 === 0 ? `${minutes / 60} h` : `${minutes} min`}
             </option>
           ))}

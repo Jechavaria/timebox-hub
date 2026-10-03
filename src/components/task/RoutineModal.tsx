@@ -194,7 +194,7 @@ export function RoutineModal({ date, onClose, onSave }: RoutineModalProps) {
                     'flex flex-col items-center gap-1.5 rounded-xl border p-2.5 text-center transition-all duration-150',
                     isSelected
                       ? 'border-accent bg-accent/15 ring-2 ring-accent/30 text-ink'
-                      : 'border-glass-border bg-glass hover:bg-white/8 text-ink-muted',
+                      : 'border-glass-border bg-glass hover:bg-glass-strong text-ink-muted',
                   )}
                 >
                   <span
@@ -222,7 +222,7 @@ export function RoutineModal({ date, onClose, onSave }: RoutineModalProps) {
             maxLength={120}
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className="input-glass mt-1 w-full"
+            className="glass-input mt-1 w-full"
             placeholder="Nombre de la rutina"
           />
         </div>
@@ -240,7 +240,7 @@ export function RoutineModal({ date, onClose, onSave }: RoutineModalProps) {
                 value={origin}
                 onChange={(e) => setOrigin(e.target.value)}
                 placeholder="Ej. Casa"
-                className="input-glass mt-1 w-full text-xs"
+                className="glass-input mt-1 w-full text-xs"
               />
             </div>
             <div>
@@ -253,7 +253,7 @@ export function RoutineModal({ date, onClose, onSave }: RoutineModalProps) {
                 value={destination}
                 onChange={(e) => setDestination(e.target.value)}
                 placeholder="Ej. Trabajo / Universidad"
-                className="input-glass mt-1 w-full text-xs"
+                className="glass-input mt-1 w-full text-xs"
               />
             </div>
           </div>
@@ -277,7 +277,7 @@ export function RoutineModal({ date, onClose, onSave }: RoutineModalProps) {
             required
             value={duration}
             onChange={(e) => setDuration(Math.max(1, parseInt(e.target.value, 10) || 1))}
-            className="input-glass mt-1 w-full"
+            className="glass-input mt-1 w-full"
           />
           <div className="mt-2 flex flex-wrap gap-1.5">
             {QUICK_DURATIONS.map((preset) => (
@@ -289,7 +289,7 @@ export function RoutineModal({ date, onClose, onSave }: RoutineModalProps) {
                   'rounded-lg border px-2 py-0.5 text-[11px] font-medium transition-colors',
                   duration === preset
                     ? 'border-accent bg-accent text-white'
-                    : 'border-glass-border bg-glass text-ink-muted hover:text-ink hover:bg-white/8',
+                    : 'border-glass-border bg-glass text-ink-muted hover:text-ink hover:bg-glass-strong',
                 )}
               >
                 {preset === 480 ? '8h' : preset >= 60 ? `${preset / 60}h` : `${preset}m`}
@@ -315,7 +315,7 @@ export function RoutineModal({ date, onClose, onSave }: RoutineModalProps) {
                 type="time"
                 value={startTime}
                 onChange={(e) => setStartTime(e.target.value)}
-                className="input-glass w-full"
+                className="glass-input w-full"
               />
             </div>
           ) : (
@@ -335,7 +335,7 @@ export function RoutineModal({ date, onClose, onSave }: RoutineModalProps) {
               id={`routine-area-${uid}`}
               value={areaId}
               onChange={(e) => setAreaId(e.target.value)}
-              className="input-glass mt-1 w-full"
+              className="glass-input mt-1 w-full"
             >
               <option value="">(Sin ámbito específico)</option>
               {areas.areas.map((area) => (
@@ -357,7 +357,7 @@ export function RoutineModal({ date, onClose, onSave }: RoutineModalProps) {
             rows={2}
             value={customNotes}
             onChange={(e) => setCustomNotes(e.target.value)}
-            className="input-glass mt-1 w-full text-xs"
+            className="glass-input mt-1 w-full text-xs"
             placeholder="Detalles adicionales de la rutina"
           />
         </div>

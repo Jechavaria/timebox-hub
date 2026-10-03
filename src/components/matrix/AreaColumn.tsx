@@ -104,7 +104,7 @@ export function AreaColumn({ area, tasks, areaActions, taskActions }: AreaColumn
         </header>
 
         {showMenu ? (
-          <div className="z-10 flex shrink-0 items-center gap-1 border-b border-glass-border bg-black/15 px-2 py-1">
+          <div className="z-10 flex shrink-0 items-center gap-1 border-b border-glass-border bg-glass px-2 py-1">
             <Button size="sm" variant="ghost" onClick={() => { setEditing(true); setShowMenu(false) }}>
               <Pencil aria-hidden="true" className="size-4" />
               Editar

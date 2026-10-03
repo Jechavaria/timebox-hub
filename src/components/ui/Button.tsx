@@ -19,9 +19,9 @@ const BASE_CLASS =
 
 const VARIANT_CLASS: Record<ButtonVariant, string> = {
   primary: 'bg-accent-strong text-white hover:brightness-110',
-  secondary: 'border border-glass-border bg-glass-strong text-ink hover:bg-white/14',
-  ghost: 'text-ink-muted hover:bg-white/8 hover:text-ink',
-  danger: 'border border-danger/40 bg-danger/15 text-danger hover:bg-danger/25',
+  secondary: 'border border-glass-border bg-glass-strong text-ink hover:border-accent/40',
+  ghost: 'text-ink-muted hover:bg-glass-strong hover:text-ink',
+  danger: 'border border-danger/40 bg-danger/15 text-danger hover:bg-danger/25 [--glow-color:var(--color-danger)]',
 }
 
 const SIZE_CLASS: Record<ButtonSize, string> = {
