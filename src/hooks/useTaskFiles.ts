@@ -16,6 +16,7 @@ export interface UseTaskFilesResult {
   error: string | null
   refresh: () => Promise<void>
   uploadFiles: (files: File[]) => Promise<MutationResult<TaskFile[]>>
+  addLink: (url: string, name?: string) => Promise<MutationResult<TaskFile>>
   replaceFile: (existingFile: TaskFile, replacement: File) => Promise<MutationResult<TaskFile>>
   downloadFile: (file: TaskFile) => Promise<MutationResult<void>>
   getPreviewUrl: (file: TaskFile) => Promise<MutationResult<string>>
@@ -136,6 +137,48 @@ export function useTaskFiles(taskId: string | null): UseTaskFilesResult {
     [taskId, userId],
   )
 
+  const addLink = useCallback(
+    async (url: string, name?: string): Promise<MutationResult<TaskFile>> => {
+      if (!taskId || !userId) return { ok: false, message: 'Inicia sesión para adjuntar enlaces.' }
+      const trimmedUrl = url.trim()
+      if (!trimmedUrl) return { ok: false, message: 'La URL no puede estar vacía.' }
+
+      const normalized = /^https?:\/\//i.test(trimmedUrl) ? trimmedUrl : `https://${trimmedUrl}`
+      const displayName = name?.trim() || trimmedUrl
+
+      setIsUploading(true)
+      setError(null)
+      try {
+        const { data, error: insertError } = await supabase
+          .from('task_files')
+          .insert({
+            user_id: userId,
+            master_task_id: taskId,
+            file_name: displayName,
+            file_url: normalized,
+            file_size: 0,
+            file_type: 'link',
+          })
+          .select('*')
+          .single()
+
+        if (insertError || !data) {
+          throw insertError ?? new Error('No se pudo guardar el enlace.')
+        }
+
+        setFiles((current) => [data, ...current])
+        return { ok: true, data }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'No se pudo guardar el enlace.'
+        setError(message)
+        return { ok: false, message }
+      } finally {
+        setIsUploading(false)
+      }
+    },
+    [taskId, userId],
+  )
+
   const replaceFile = useCallback(
     async (existingFile: TaskFile, replacement: File): Promise<MutationResult<TaskFile>> => {
       if (!taskId || !userId || existingFile.user_id !== userId || existingFile.master_task_id !== taskId) {
@@ -216,6 +259,10 @@ export function useTaskFiles(taskId: string | null): UseTaskFilesResult {
     if (!userId || file.user_id !== userId) {
       return { ok: false, message: 'No tienes permiso para descargar este archivo.' }
     }
+    if (file.file_type === 'link') {
+      window.open(file.file_url, '_blank', 'noopener,noreferrer')
+      return { ok: true, data: undefined }
+    }
     setDownloadingIds((current) => new Set(current).add(file.id))
     try {
       const signedUrl = await getSignedUrl(file.file_url, file.file_name)
@@ -247,6 +294,9 @@ export function useTaskFiles(taskId: string | null): UseTaskFilesResult {
       if (!userId || file.user_id !== userId) {
         return { ok: false, message: 'No tienes permiso para ver este archivo.' }
       }
+      if (file.file_type === 'link') {
+        return { ok: true, data: file.file_url }
+      }
       try {
         const previewUrl = await getPreviewSignedUrl(file.file_url)
         return { ok: true, data: previewUrl }
@@ -264,7 +314,9 @@ export function useTaskFiles(taskId: string | null): UseTaskFilesResult {
       }
       setDeletingIds((current) => new Set(current).add(file.id))
       try {
-        await deleteAttachment(file.file_url)
+        if (file.file_type !== 'link') {
+          await deleteAttachment(file.file_url)
+        }
         const { error: rowError } = await supabase
           .from('task_files')
           .delete()
@@ -299,6 +351,7 @@ export function useTaskFiles(taskId: string | null): UseTaskFilesResult {
     error,
     refresh,
     uploadFiles,
+    addLink,
     replaceFile,
     downloadFile,
     getPreviewUrl,

@@ -1,21 +1,34 @@
+import clsx from 'clsx'
 import { useNow } from '../../hooks/useNow.ts'
 import { formatClockTime, formatDateShort, toLocalDateString } from '../../lib/time.ts'
 
-export function Clock() {
+interface ClockProps {
+  className?: string
+  compact?: boolean
+}
+
+export function Clock({ className, compact = false }: ClockProps) {
   const now = useNow({ alignToMinute: true })
   const time = formatClockTime(now)
 
   return (
     <time
       dateTime={`${toLocalDateString(now)}T${time}`}
-      className="flex flex-col items-end leading-none"
+      className={clsx('flex flex-col leading-none', compact ? 'items-start' : 'items-end', className)}
     >
-      <span className="text-xl font-semibold tabular-nums tracking-tight text-ink sm:text-2xl">
+      <span
+        className={clsx(
+          'tabular-nums tracking-tight text-ink font-bold',
+          compact ? 'text-base font-semibold' : 'text-xl sm:text-2xl font-semibold',
+        )}
+      >
         {time}
       </span>
-      <span className="mt-1 hidden text-xs capitalize text-ink-muted sm:block">
-        {formatDateShort(now)}
-      </span>
+      {!compact && (
+        <span className="mt-1 hidden text-xs capitalize text-ink-muted sm:block">
+          {formatDateShort(now)}
+        </span>
+      )}
     </time>
   )
 }

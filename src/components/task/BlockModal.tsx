@@ -11,6 +11,7 @@ import { DurationPicker } from '../ui/DurationPicker.tsx'
 import { FileList } from './FileList.tsx'
 import { FilePreviewModal } from './FilePreviewModal.tsx'
 import { FileUploader } from './FileUploader.tsx'
+import { NotesLinkBar, renderTextWithLinks } from '../../lib/linkUtils.tsx'
 
 interface BlockModalProps {
   block: ScheduleBlock | null
@@ -23,6 +24,7 @@ export function BlockModal({ block, onClose, onSave }: BlockModalProps) {
   const taskFiles = useTaskFiles(block?.master_task_id ?? null)
   const [title, setTitle] = useState('')
   const [notes, setNotes] = useState('')
+  const [previewNotes, setPreviewNotes] = useState(false)
   const [duration, setDuration] = useState(30)
   const [startTime, setStartTime] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -151,15 +153,34 @@ export function BlockModal({ block, onClose, onSave }: BlockModalProps) {
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <label htmlFor={`${uid}-notes`} className="text-sm font-medium text-ink">Notas</label>
-              <textarea
-                id={`${uid}-notes`}
-                rows={4}
-                maxLength={4000}
-                value={notes}
-                onChange={(event) => setNotes(event.target.value)}
-                className="glass-input resize-y py-3"
-              />
+              <div className="flex items-center justify-between">
+                <label htmlFor={`${uid}-notes`} className="text-sm font-medium text-ink">Notas</label>
+                {notes.trim() ? (
+                  <button
+                    type="button"
+                    onClick={() => setPreviewNotes((prev) => !prev)}
+                    className="text-xs font-medium text-accent hover:underline cursor-pointer"
+                  >
+                    {previewNotes ? 'Modo editor' : 'Vista con enlaces'}
+                  </button>
+                ) : null}
+              </div>
+              {previewNotes ? (
+                <div className="glass-input min-h-24 py-2.5 px-3 whitespace-pre-wrap text-sm text-ink select-text">
+                  {renderTextWithLinks(notes)}
+                </div>
+              ) : (
+                <textarea
+                  id={`${uid}-notes`}
+                  rows={4}
+                  maxLength={4000}
+                  value={notes}
+                  onChange={(event) => setNotes(event.target.value)}
+                  placeholder="Notas, detalles o enlaces (se detectarán automáticamente)..."
+                  className="glass-input resize-y py-3"
+                />
+              )}
+              <NotesLinkBar notes={notes} />
             </div>
             <DurationPicker
               id={`${uid}-duration`}
@@ -189,6 +210,7 @@ export function BlockModal({ block, onClose, onSave }: BlockModalProps) {
                 <FileUploader
                   disabled={taskFiles.isUploading}
                   onUpload={handleUpload}
+                  onAddLink={taskFiles.addLink}
                 />
                 <FileList
                   files={taskFiles.files}

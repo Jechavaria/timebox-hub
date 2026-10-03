@@ -20,22 +20,35 @@ export function Navbar() {
   return (
     <GlassPanel
       as="header"
-      className="relative z-30 flex shrink-0 items-center justify-between gap-3 px-3 py-2 sm:px-4"
+      className="relative z-30 flex shrink-0 items-center justify-between gap-2 px-3 py-2 sm:px-4 sm:gap-3"
     >
-      <div className="flex min-w-0 items-center gap-3">
-        <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-accent-soft text-accent">
-          <Hourglass className="size-5" aria-hidden="true" />
+      {/* Lado izquierdo: Identidad y reloj en móvil */}
+      <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+        <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-accent-soft text-accent sm:size-10">
+          <Hourglass className="size-4.5 sm:size-5" aria-hidden="true" />
         </span>
-        <div className="min-w-0 leading-tight">
+
+        {/* En móvil: La hora aparece aquí directamente con su propio espaciado, sin chocar nunca */}
+        <div className="flex flex-col sm:hidden">
+          <Clock compact />
+        </div>
+
+        {/* En pantallas medianas y grandes: Nombre y lema de la app */}
+        <div className="hidden sm:block min-w-0 leading-tight">
           <p className="truncate text-base font-semibold tracking-tight text-ink">TimeBox Hub</p>
-          <p className="hidden truncate text-xs text-ink-muted sm:block">
+          <p className="truncate text-xs text-ink-muted">
             Gestor háptico de tiempo y tareas
           </p>
         </div>
       </div>
 
-      <div className="flex shrink-0 items-center gap-1.5 sm:gap-3">
-        <Clock />
+      {/* Lado derecho: Reloj en escritorio y botones de acción */}
+      <div className="flex shrink-0 items-center gap-1 sm:gap-2.5">
+        {/* En escritorio: El reloj se ubica aquí a la derecha */}
+        <div className="hidden sm:block">
+          <Clock />
+        </div>
+
         <IconButton
           label={
             isAlertingActive

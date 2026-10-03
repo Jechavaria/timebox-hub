@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import clsx from 'clsx'
-import { Download, Eye, File, FileSpreadsheet, FileText, Image, LoaderCircle, Music2, RefreshCw, Trash2 } from 'lucide-react'
+import { Download, ExternalLink, Eye, File, FileSpreadsheet, FileText, Image, Link2, LoaderCircle, Music2, RefreshCw, Trash2 } from 'lucide-react'
 import type { TaskFile, MutationResult } from '../../types/domain.ts'
 import { formatBytes } from '../../lib/files.ts'
 import { Button } from '../ui/Button.tsx'
@@ -22,6 +22,7 @@ interface FileListProps {
 
 function FileKindIcon({ file }: { file: TaskFile }) {
   const iconClass = 'size-5 shrink-0 text-ink-muted'
+  if (file.file_type === 'link') return <Link2 className="size-5 shrink-0 text-accent" aria-hidden="true" />
   if (file.file_type.startsWith('image/')) return <Image className={iconClass} aria-hidden="true" />
   if (file.file_type.startsWith('audio/')) return <Music2 className={iconClass} aria-hidden="true" />
   if (file.file_type.includes('spreadsheet')) return <FileSpreadsheet className={iconClass} aria-hidden="true" />
@@ -105,47 +106,75 @@ export function FileList({
                 />
                 <div className="flex items-start gap-2.5">
                   <FileKindIcon file={file} />
-                  <p
-                    className="min-w-0 flex-1 break-words text-sm font-medium leading-snug text-ink select-text"
-                    title={file.file_name}
-                  >
-                    {file.file_name}
-                  </p>
+                  {file.file_type === 'link' ? (
+                    <a
+                      href={file.file_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="min-w-0 flex-1 break-words text-sm font-semibold leading-snug text-blue-400 hover:text-blue-300 hover:underline inline-flex items-center gap-1.5"
+                      title={`Abrir ${file.file_url}`}
+                    >
+                      <span>{file.file_name}</span>
+                      <ExternalLink className="size-3.5 shrink-0 inline opacity-80" />
+                    </a>
+                  ) : (
+                    <p
+                      className="min-w-0 flex-1 break-words text-sm font-medium leading-snug text-ink select-text"
+                      title={file.file_name}
+                    >
+                      {file.file_name}
+                    </p>
+                  )}
                 </div>
                 <div className="flex items-center justify-between gap-2 border-t border-glass-border/40 pt-1.5">
                   <span className="text-[11px] tabular-nums text-ink-faint">
-                    {formatBytes(file.file_size)} · {new Intl.DateTimeFormat('es', { dateStyle: 'medium' }).format(new Date(file.uploaded_at))}
+                    {file.file_type === 'link'
+                      ? `Enlace web · ${new Intl.DateTimeFormat('es', { dateStyle: 'medium' }).format(new Date(file.uploaded_at))}`
+                      : `${formatBytes(file.file_size)} · ${new Intl.DateTimeFormat('es', { dateStyle: 'medium' }).format(new Date(file.uploaded_at))}`}
                   </span>
                   <div className="flex shrink-0 items-center gap-1">
-                    {onPreview ? (
+                    {file.file_type === 'link' ? (
                       <IconButton
-                        label={`Vista previa de ${file.file_name}`}
+                        label={`Abrir enlace ${file.file_name}`}
                         size="sm"
-                        disabled={isDownloading || isDeleting || isReplacing}
-                        onClick={() => onPreview(file)}
-                        className="size-8 text-accent hover:bg-accent/20"
+                        onClick={() => { void onDownload(file) }}
+                        className="size-8 text-blue-400 hover:bg-blue-500/20"
                       >
-                        <Eye className="size-4" />
+                        <ExternalLink className="size-4" />
                       </IconButton>
-                    ) : null}
-                    <IconButton
-                      label={`Descargar ${file.file_name}`}
-                      size="sm"
-                      disabled={isDownloading || isDeleting || isReplacing}
-                      onClick={() => { void onDownload(file) }}
-                      className={clsx('size-8', isDownloading && 'animate-pulse')}
-                    >
-                      {isDownloading ? <LoaderCircle className="size-4 animate-spin" /> : <Download className="size-4" />}
-                    </IconButton>
-                    <IconButton
-                      label={`Reemplazar ${file.file_name}`}
-                      size="sm"
-                      disabled={isReplacing || isDeleting || isDownloading}
-                      onClick={() => inputRefs.current.get(file.id)?.click()}
-                      className={clsx('size-8', isReplacing && 'animate-pulse')}
-                    >
-                      {isReplacing ? <LoaderCircle className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
-                    </IconButton>
+                    ) : (
+                      <>
+                        {onPreview ? (
+                          <IconButton
+                            label={`Vista previa de ${file.file_name}`}
+                            size="sm"
+                            disabled={isDownloading || isDeleting || isReplacing}
+                            onClick={() => onPreview(file)}
+                            className="size-8 text-accent hover:bg-accent/20"
+                          >
+                            <Eye className="size-4" />
+                          </IconButton>
+                        ) : null}
+                        <IconButton
+                          label={`Descargar ${file.file_name}`}
+                          size="sm"
+                          disabled={isDownloading || isDeleting || isReplacing}
+                          onClick={() => { void onDownload(file) }}
+                          className={clsx('size-8', isDownloading && 'animate-pulse')}
+                        >
+                          {isDownloading ? <LoaderCircle className="size-4 animate-spin" /> : <Download className="size-4" />}
+                        </IconButton>
+                        <IconButton
+                          label={`Reemplazar ${file.file_name}`}
+                          size="sm"
+                          disabled={isReplacing || isDeleting || isDownloading}
+                          onClick={() => inputRefs.current.get(file.id)?.click()}
+                          className={clsx('size-8', isReplacing && 'animate-pulse')}
+                        >
+                          {isReplacing ? <LoaderCircle className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
+                        </IconButton>
+                      </>
+                    )}
                     <IconButton
                       label={`Eliminar ${file.file_name}`}
                       size="sm"
