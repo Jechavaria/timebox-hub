@@ -489,7 +489,7 @@ export function RoutineModal({ date, onClose, onSave }: RoutineModalProps) {
           )}
         </div>
 
-        {/* Repetición estilo Google Calendar */}
+        {/* Repetición periódica de la rutina o hábito */}
         {date ? (
           <RecurrenceSelector
             baseDate={date}

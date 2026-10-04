@@ -81,17 +81,40 @@ export function minutesToTime(totalMinutes: number): TimeOfDayString {
   return `${pad2(Math.floor(totalMinutes / 60))}:${pad2(totalMinutes % 60)}:00`
 }
 
-/** Devuelve hora en formato 12h (ej. "1:30 PM", "12:00 AM") para mostrar en pantalla. */
+/** Devuelve hora en formato 12h (ej. "1:30 PM", "12:00 AM") para mostrar en pantalla sin lanzar error al pasar de medianoche. */
 export function minutesToHM(totalMinutes: number): string {
-  if (!Number.isInteger(totalMinutes) || totalMinutes < 0 || totalMinutes > MINUTES_PER_DAY) {
-    throw new RangeError(`Minutos fuera del día: ${totalMinutes}`)
+  if (!Number.isFinite(totalMinutes)) {
+    return '12:00 AM'
   }
-  const totalHours = Math.floor(totalMinutes / 60)
-  const normalizedHours = totalHours % 24
-  const hours12 = normalizedHours % 12 === 0 ? 12 : normalizedHours % 12
-  const minutes = pad2(totalMinutes % 60)
-  const ampm = normalizedHours >= 12 ? 'PM' : 'AM'
+  const intMinutes = Math.round(totalMinutes)
+  const normalized = ((intMinutes % MINUTES_PER_DAY) + MINUTES_PER_DAY) % MINUTES_PER_DAY
+  const totalHours = Math.floor(normalized / 60)
+  const hours12 = totalHours % 12 === 0 ? 12 : totalHours % 12
+  const minutes = pad2(normalized % 60)
+  const ampm = totalHours >= 12 ? 'PM' : 'AM'
   return `${hours12}:${minutes} ${ampm}`
+}
+
+/**
+ * Formatea un rango horario respetando bloques nocturnos que pasan de un día a otro.
+ * Ej. 23:00 + 480 min -> "11:00 PM – 7:00 AM (+1 d)"
+ */
+export function formatBlockTimeRange(startMinutes: number, durationMinutes: number): {
+  label: string
+  crossesMidnight: boolean
+  endMinutes: number
+} {
+  const endTotal = startMinutes + durationMinutes
+  const crossesMidnight = endTotal > MINUTES_PER_DAY
+  const endMinutes = endTotal % MINUTES_PER_DAY
+  const startStr = minutesToHM(startMinutes)
+  const endStr = minutesToHM(endMinutes)
+
+  return {
+    label: crossesMidnight ? `${startStr} – ${endStr} (+1 d)` : `${startStr} – ${endStr}`,
+    crossesMidnight,
+    endMinutes,
+  }
 }
 
 /** Formatea una hora entera (0 a 23) en formato 12h (ej. "12:00 AM", "1:00 PM"). */
@@ -123,9 +146,9 @@ export function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max)
 }
 
-/** Limita el inicio para que el bloque termine como máximo a las 24:00. */
-export function clampStartMinutes(startMinutes: number, durationMinutes: number): number {
-  return clamp(startMinutes, 0, Math.max(0, MINUTES_PER_DAY - durationMinutes))
+/** Limita el inicio a cualquier intervalo válido del día (de 00:00 a 23:45). */
+export function clampStartMinutes(startMinutes: number, _durationMinutes?: number): number {
+  return clamp(startMinutes, 0, 1425)
 }
 
 export function snapMinutes(minutes: number, step: number = SNAP_MINUTES): number {

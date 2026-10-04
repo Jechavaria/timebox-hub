@@ -91,6 +91,10 @@ export type ScheduleBlock = {
   is_completed: boolean
   is_routine: boolean
   created_at: IsoTimestamp
+  /** Indica si este bloque es una proyección visual de continuación de un bloque que inició el día anterior y cruzó la medianoche. */
+  is_overnight_continuation?: boolean
+  overnight_original_start?: TimeOfDayString | null
+  overnight_duration_minutes?: number
 }
 
 export type ScheduleBlockInsert = {

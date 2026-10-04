@@ -121,7 +121,7 @@ export function FileList({
             return (
               <li
                 key={file.id}
-                className="flex flex-col gap-2 rounded-xl border border-glass-border bg-glass p-2.5 transition-colors hover:border-glass-border/80"
+                className="flex flex-col gap-2 rounded-xl border border-glass-border bg-glass p-2.5 transition-colors hover:border-glass-border/80 min-w-0 max-w-full overflow-hidden"
               >
                 <input
                   ref={(element) => {
@@ -142,26 +142,26 @@ export function FileList({
                     })
                   }}
                 />
-                <div className="flex items-start gap-2.5">
+                <div className="flex items-start gap-2.5 min-w-0 max-w-full">
                   <FileKindIcon file={file} />
                   {file.file_type === 'link' ? (
                     (() => {
                       const service = detectCloudDocService(file.file_url)
                       return (
-                        <div className="flex flex-col gap-1 min-w-0 flex-1">
-                          <div className="flex items-center gap-1.5 flex-wrap">
+                        <div className="flex flex-col gap-1 min-w-0 max-w-full flex-1">
+                          <div className="flex items-center gap-1.5 flex-wrap min-w-0 max-w-full">
                             <a
                               href={file.file_url}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className={`min-w-0 break-words text-sm font-semibold leading-snug hover:underline inline-flex items-center gap-1.5 ${service.textColor}`}
+                              className={`min-w-0 max-w-full break-all [overflow-wrap:anywhere] text-sm font-semibold leading-snug hover:underline inline-flex items-center gap-1.5 ${service.textColor}`}
                               title={service.actionLabel}
                             >
-                              <span>{file.file_name}</span>
+                              <span className="min-w-0 max-w-full break-all [overflow-wrap:anywhere]">{file.file_name}</span>
                               <ExternalLink className="size-3.5 shrink-0 inline opacity-80" />
                             </a>
                             {service.isCloudDoc ? (
-                              <span className={`rounded-md px-1.5 py-0.5 text-[10px] font-bold border ${service.badgeColor}`}>
+                              <span className={`shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-bold border ${service.badgeColor}`}>
                                 ☁️ {service.label} · Autoguardado
                               </span>
                             ) : null}
@@ -171,7 +171,7 @@ export function FileList({
                     })()
                   ) : (
                     <p
-                      className="min-w-0 flex-1 break-words text-sm font-medium leading-snug text-ink select-text"
+                      className="min-w-0 max-w-full flex-1 break-words break-all [overflow-wrap:anywhere] text-sm font-medium leading-snug text-ink select-text"
                       title={file.file_name}
                     >
                       {file.file_name}

@@ -95,7 +95,7 @@ type DragGeometryEvent = Pick<DragEndEvent, 'active' | 'delta'>
  * Usa el rectángulo trasladado (ya incluye el auto-scroll de los contenedores), así la hora
  * coincide con lo que el usuario ve aunque la línea de tiempo se haya desplazado durante el arrastre.
  */
-function getDropStartMinutes(event: DragGeometryEvent, date: string, durationMinutes: number): number {
+function getDropStartMinutes(event: DragGeometryEvent, date: string, _durationMinutes?: number): number {
   const board = Array.from(document.querySelectorAll<HTMLElement>('[data-timeline-date]')).find(
     (element) => element.dataset.timelineDate === date,
   )
@@ -104,9 +104,9 @@ function getDropStartMinutes(event: DragGeometryEvent, date: string, durationMin
   const dropTop = translatedTop ?? (initialTop !== undefined ? initialTop + event.delta.y : undefined)
   if (!board || dropTop === undefined) return 9 * 60
 
-  const safeDuration = Math.max(15, durationMinutes || 30)
   const rawMinutes = (dropTop - board.getBoundingClientRect().top) / PX_PER_MINUTE
-  return clamp(snapMinutes(rawMinutes), 0, Math.max(0, 1440 - safeDuration))
+  // Permite soltar hasta las 23:45 (1425 min) sin forzar bloques largos a terminar antes de medianoche
+  return clamp(snapMinutes(rawMinutes), 0, 1425)
 }
 
 export function PlannerDndContext({ children }: PlannerDndContextProps) {

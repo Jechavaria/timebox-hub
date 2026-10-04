@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Calendar, CalendarDays, RotateCw, Trash2 } from 'lucide-react'
 import { AGENDA_WINDOW_DAYS } from '../../lib/constants.ts'
-import { getWeekDates, minutesToTime, toLocalDateString } from '../../lib/time.ts'
+import { addDays, getWeekDates, minutesToTime, timeToMinutes, toLocalDateString } from '../../lib/time.ts'
 import { useNow } from '../../hooks/useNow.ts'
 import { usePlanner } from '../../hooks/usePlanner.ts'
 import { useToast } from '../../hooks/useToast.ts'
@@ -45,6 +45,29 @@ export function Agenda() {
       const list = grouped.get(block.scheduled_date) ?? []
       list.push(block)
       grouped.set(block.scheduled_date, list)
+
+      // Si el bloque inicia con hora fija y cruza la medianoche hacia el día siguiente (ej. dormir de 23:00 a 07:00)
+      if (block.start_time && block.planned_duration_minutes) {
+        let startMin = 0
+        try {
+          startMin = timeToMinutes(block.start_time)
+        } catch {
+          continue
+        }
+        const totalEnd = startMin + block.planned_duration_minutes
+        if (totalEnd > 1440) {
+          const nextDate = addDays(block.scheduled_date, 1)
+          const nextList = grouped.get(nextDate) ?? []
+          const continuationBlock: ScheduleBlock = {
+            ...block,
+            is_overnight_continuation: true,
+            overnight_original_start: block.start_time,
+            overnight_duration_minutes: totalEnd - 1440,
+          }
+          nextList.push(continuationBlock)
+          grouped.set(nextDate, nextList)
+        }
+      }
     }
     return grouped
   }, [schedule.blocks])

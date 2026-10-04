@@ -18,6 +18,7 @@ import type {
   MasterTask,
   MutationResult,
   ScheduleBlock,
+  ScheduleBlockInsert,
   ScheduleBlockUpdate,
 } from '../types/domain.ts'
 import { useToday } from './useToday.ts'
@@ -73,6 +74,24 @@ function mergeBlocks(current: ScheduleBlock[], incoming: ScheduleBlock[]): Sched
   const byId = new Map(current.map((block) => [block.id, block]))
   for (const block of incoming) byId.set(block.id, block)
   return sortBlocks([...byId.values()])
+}
+
+function toDbBlock(block: ScheduleBlock): ScheduleBlockInsert {
+  return {
+    id: block.id,
+    user_id: block.user_id,
+    master_task_id: block.master_task_id,
+    area_id: block.area_id,
+    title: block.title,
+    notes: block.notes,
+    scheduled_date: block.scheduled_date,
+    start_time: block.start_time,
+    planned_duration_minutes: block.planned_duration_minutes,
+    actual_duration_minutes: block.actual_duration_minutes,
+    is_completed: block.is_completed,
+    is_routine: block.is_routine,
+    created_at: block.created_at,
+  }
 }
 
 function getRowsForPlacement(
@@ -231,7 +250,7 @@ export function useSchedule(): UseScheduleResult {
       try {
         const { data, error: upsertError } = await supabase
           .from('schedule_blocks')
-          .upsert(placement.rows)
+          .upsert(placement.rows.map(toDbBlock))
           .select('*')
         if (upsertError) throw upsertError
         ids.forEach((id) => pendingIds.current.delete(id))
@@ -279,7 +298,7 @@ export function useSchedule(): UseScheduleResult {
       try {
         const { data, error: upsertError } = await supabase
           .from('schedule_blocks')
-          .upsert(newBlocks)
+          .upsert(newBlocks.map(toDbBlock))
           .select('*')
         if (upsertError) throw upsertError
 
@@ -345,14 +364,10 @@ export function useSchedule(): UseScheduleResult {
       }
 
       if (startTime) {
-        let startMinutes: number
         try {
-          startMinutes = timeToMinutes(startTime)
+          timeToMinutes(startTime)
         } catch {
           return { ok: false, message: 'La hora de inicio no es válida.' }
-        }
-        if (startMinutes + plannedDurationMinutes > 1440) {
-          return { ok: false, message: OUTSIDE_DAY_ERROR }
         }
       }
 
@@ -379,7 +394,7 @@ export function useSchedule(): UseScheduleResult {
       try {
         const { data, error: upsertError } = await supabase
           .from('schedule_blocks')
-          .upsert(newBlocks)
+          .upsert(newBlocks.map(toDbBlock))
           .select('*')
         if (upsertError) throw upsertError
 
@@ -422,9 +437,6 @@ export function useSchedule(): UseScheduleResult {
           startMinutes = timeToMinutes(input.startTime)
         } catch {
           return { ok: false, message: 'La hora de inicio no es válida.' }
-        }
-        if (startMinutes + input.plannedDurationMinutes > 1440) {
-          return { ok: false, message: OUTSIDE_DAY_ERROR }
         }
       }
 

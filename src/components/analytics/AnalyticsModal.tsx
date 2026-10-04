@@ -515,8 +515,11 @@ function AnalyticsDashboard() {
               size="sm"
               variant="ghost"
               leadingIcon={<RotateCcw className="size-3.5" aria-hidden="true" />}
-              onClick={() => setAnchor(today)}
-              disabled={anchor === today}
+              onClick={() => {
+                setAnchor(today)
+                setPeriod('day')
+              }}
+              disabled={period === 'day' && anchor === today}
             >
               Hoy
             </Button>

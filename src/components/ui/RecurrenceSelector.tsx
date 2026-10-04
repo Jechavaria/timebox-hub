@@ -67,22 +67,38 @@ export function RecurrenceSelector({
 
   const isRepeating = value.frequency !== 'none'
   const countPills = useMemo(() => {
-    if (value.frequency === 'daily') return [7, 14, 30]
-    if (value.frequency === 'weekly') return [4, 8, 12]
-    if (value.frequency === 'weekdays') return [10, 20, 40]
-    return [4, 8, 12]
+    if (value.frequency === 'daily') return [7, 14, 21, 30, 60, 90]
+    if (value.frequency === 'weekly') return [4, 8, 12, 24, 52]
+    if (value.frequency === 'weekdays') return [10, 20, 40, 60]
+    return [4, 8, 12, 24]
   }, [value.frequency])
 
-  const countPillLabels: Record<string, string> = {
-    '7': '1 semana (7 d)',
-    '14': '2 semanas (14 d)',
-    '30': '1 mes (30 d)',
-    '4': '4 semanas',
-    '8': '8 semanas (~2 meses)',
-    '12': '12 semanas (~3 meses)',
-    '10': '2 sem laborales (10 d)',
-    '20': '4 sem laborales (20 d)',
-    '40': '8 sem laborales (40 d)',
+  const getPillLabel = (count: number): string => {
+    if (value.frequency === 'weekdays') {
+      if (count === 10) return '2 sem lab. (10 d)'
+      if (count === 20) return '4 sem lab. (20 d)'
+      if (count === 40) return '8 sem lab. (40 d)'
+      if (count === 60) return '12 sem lab. (60 d)'
+      return `${count} sesiones`
+    }
+    if (value.frequency === 'weekly') {
+      if (count === 4) return '4 semanas'
+      if (count === 8) return '8 sem (~2 meses)'
+      if (count === 12) return '12 sem (~3 meses)'
+      if (count === 24) return '6 meses (24 sem)'
+      if (count === 52) return '1 año (52 sem)'
+      return `${count} semanas`
+    }
+    if (value.frequency === 'daily') {
+      if (count === 7) return '1 sem (7 d)'
+      if (count === 14) return '2 sem (14 d)'
+      if (count === 21) return 'Reto 21 días 🔥'
+      if (count === 30) return '1 mes (30 d)'
+      if (count === 60) return '2 meses (60 d)'
+      if (count === 90) return '3 meses (90 d)'
+      return `${count} días`
+    }
+    return `${count} veces`
   }
 
   return (
@@ -90,7 +106,7 @@ export function RecurrenceSelector({
       <div className="flex items-center justify-between">
         <label className="flex items-center gap-1.5 text-xs font-semibold text-ink">
           <Repeat className="size-3.5 text-blue-400" />
-          <span>Repetir (estilo Google Calendar)</span>
+          <span>Repetir tarea o hábito</span>
         </label>
         {isRepeating ? (
           <span className="rounded-full bg-blue-500/15 px-2 py-0.5 text-[10px] font-bold text-blue-400">
@@ -164,10 +180,37 @@ export function RecurrenceSelector({
                         : 'border border-glass-border/60 bg-glass/40 text-ink-muted hover:text-ink hover:border-glass-border'
                     }`}
                   >
-                    {countPillLabels[String(count)] || `${count} veces`}
+                    {getPillLabel(count)}
                   </button>
                 )
               })}
+            </div>
+
+            {/* Entrada personalizada para cualquier número de días o repeticiones */}
+            <div className="flex items-center gap-2 pt-1">
+              <span className="text-[11px] font-medium text-ink-muted">O ingresa un número exacto:</span>
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="number"
+                  min={1}
+                  max={365}
+                  disabled={disabled}
+                  value={value.count ?? ''}
+                  placeholder="Ej. 21"
+                  onChange={(e) => {
+                    const parsed = parseInt(e.target.value, 10)
+                    if (!Number.isNaN(parsed) && parsed > 0) {
+                      handleCountChange(Math.min(365, parsed))
+                    } else if (e.target.value === '') {
+                      handleCountChange(1)
+                    }
+                  }}
+                  className="glass-input h-7 w-20 px-2 py-0 text-center text-xs font-semibold tabular-nums"
+                />
+                <span className="text-[11px] text-ink-faint">
+                  {value.frequency === 'weekly' ? 'semanas' : value.frequency === 'daily' ? 'días' : 'repeticiones'} (máx. 365)
+                </span>
+              </div>
             </div>
           </div>
 

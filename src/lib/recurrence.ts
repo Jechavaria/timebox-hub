@@ -57,7 +57,7 @@ export function getWeekdayNameEs(dateStr: LocalDateString): string {
 }
 
 /**
- * Genera las opciones de texto para el selector estilo Google Calendar
+ * Genera las opciones de texto para el selector de recurrencia
  * basadas en la fecha base seleccionada.
  */
 export function getRecurrenceOptionsForDate(dateStr: LocalDateString): {
@@ -75,7 +75,7 @@ export function getRecurrenceOptionsForDate(dateStr: LocalDateString): {
 }
 
 /**
- * Describe una regla de recurrencia en lenguaje natural en español (estilo Google Calendar).
+ * Describe una regla de recurrencia en lenguaje natural en español.
  */
 export function describeRecurrenceRule(rule: RecurrenceRule, baseDate: LocalDateString): string {
   if (rule.frequency === 'none') return 'No se repite'
@@ -113,7 +113,7 @@ export function calculateRecurringDates(
     return [startDate]
   }
 
-  const targetCount = Math.max(1, Math.min(52, rule.count ?? DEFAULT_RECURRENCE_COUNTS[rule.frequency]))
+  const targetCount = Math.max(1, Math.min(365, rule.count ?? DEFAULT_RECURRENCE_COUNTS[rule.frequency]))
   const results: LocalDateString[] = [startDate]
   const seen = new Set<string>([startDate])
 
@@ -139,7 +139,7 @@ export function calculateRecurringDates(
   } else if (rule.frequency === 'weekdays') {
     let current = startDate
     let safetyCounter = 0
-    while (results.length < targetCount && safetyCounter < 150) {
+    while (results.length < targetCount && safetyCounter < 1500) {
       safetyCounter++
       current = addDays(current, 1)
       const day = getDayOfWeek(current)
@@ -159,7 +159,7 @@ export function calculateRecurringDates(
 
     let current = startDate
     let safetyCounter = 0
-    while (results.length < targetCount && safetyCounter < 365) {
+    while (results.length < targetCount && safetyCounter < 2000) {
       safetyCounter++
       current = addDays(current, 1)
       const day = getDayOfWeek(current)

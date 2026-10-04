@@ -3,7 +3,14 @@ import { CalendarPlus, Check, Clock, GripVertical, Maximize2, Pencil, Sparkles, 
 import { useDraggable, useDroppable } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
 import type { Area, LocalDateString, ScheduleBlock } from '../../types/domain.ts'
-import { formatDateShort, formatDuration, minutesToHM, parseLocalDate, timeToMinutes } from '../../lib/time.ts'
+import {
+  formatBlockTimeRange,
+  formatDateShort,
+  formatDuration,
+  minutesToHM,
+  parseLocalDate,
+  timeToMinutes,
+} from '../../lib/time.ts'
 import { IconButton } from '../ui/IconButton.tsx'
 import { Button } from '../ui/Button.tsx'
 
@@ -22,8 +29,10 @@ function UpcomingBlockRow({
   onToggleComplete,
   onDelete,
 }: UpcomingBlockRowProps) {
+  const isContinuation = Boolean(block.is_overnight_continuation)
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, isDragging } = useDraggable({
-    id: `block:${block.id}`,
+    id: isContinuation ? `block-cont:${block.id}` : `block:${block.id}`,
+    disabled: isContinuation,
     data: {
       type: 'schedule-block',
       blockId: block.id,
@@ -32,7 +41,9 @@ function UpcomingBlockRow({
   })
 
   const areaColor = area?.color ?? '#8a909c'
-  const startMinutes = block.start_time ? timeToMinutes(block.start_time) : null
+  const startMinutes = isContinuation ? 0 : (block.start_time ? timeToMinutes(block.start_time) : null)
+  const duration = isContinuation ? (block.overnight_duration_minutes ?? block.planned_duration_minutes) : block.planned_duration_minutes
+  const crossesMidnight = !isContinuation && startMinutes !== null && (startMinutes + duration > 1440)
 
   const style = {
     '--area-color': areaColor,
@@ -66,17 +77,26 @@ function UpcomingBlockRow({
         isDragging && 'ring-2 ring-accent/70',
       )}
     >
-      <IconButton
-        ref={setActivatorNodeRef}
-        label={`Mover ${block.title}`}
-        size="sm"
-        className="size-7 shrink-0 cursor-grab touch-none active:cursor-grabbing select-none text-ink-muted hover:text-ink"
-        style={{ touchAction: 'none', WebkitUserSelect: 'none', userSelect: 'none' }}
-        {...attributes}
-        {...listeners}
-      >
-        <GripVertical className="size-4" />
-      </IconButton>
+      {isContinuation ? (
+        <div
+          className="size-7 shrink-0 grid place-items-center select-none text-indigo-400"
+          title="Continuación de ayer (bloque nocturno)"
+        >
+          <span className="text-xs">🌙</span>
+        </div>
+      ) : (
+        <IconButton
+          ref={setActivatorNodeRef}
+          label={`Mover ${block.title}`}
+          size="sm"
+          className="size-7 shrink-0 cursor-grab touch-none active:cursor-grabbing select-none text-ink-muted hover:text-ink"
+          style={{ touchAction: 'none', WebkitUserSelect: 'none', userSelect: 'none' }}
+          {...attributes}
+          {...listeners}
+        >
+          <GripVertical className="size-4" />
+        </IconButton>
+      )}
 
       <span
         aria-hidden="true"
@@ -96,10 +116,28 @@ function UpcomingBlockRow({
         >
           {block.title}
         </span>
-        <span className="text-[10px] tabular-nums text-ink-muted">
-          {startMinutes !== null ? `${minutesToHM(startMinutes)} · ` : ''}
-          {formatDuration(block.planned_duration_minutes)}
-        </span>
+        <div className="flex items-center gap-1.5 flex-wrap text-[10px] tabular-nums text-ink-muted">
+          <span>
+            {isContinuation
+              ? `12:00 AM – ${minutesToHM(duration)}`
+              : crossesMidnight && startMinutes !== null
+                ? formatBlockTimeRange(startMinutes, duration).label
+                : startMinutes !== null
+                  ? `${minutesToHM(startMinutes)} · `
+                  : ''}
+            {isContinuation ? ` (${formatDuration(duration)})` : !crossesMidnight ? formatDuration(duration) : `(${formatDuration(duration)})`}
+          </span>
+          {crossesMidnight ? (
+            <span className="shrink-0 rounded bg-indigo-500/20 px-1 py-0.2 text-[9px] font-bold text-indigo-300">
+              🌙 Pasa a mañana
+            </span>
+          ) : null}
+          {isContinuation ? (
+            <span className="shrink-0 rounded bg-indigo-500/20 px-1 py-0.2 text-[9px] font-bold text-indigo-300">
+              🌙 Viene de ayer
+            </span>
+          ) : null}
+        </div>
       </div>
 
       <IconButton

@@ -5,7 +5,7 @@ import { Check, GripVertical, Repeat, Sparkles, Trash2, Undo2 } from 'lucide-rea
 import { useDraggable } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
 import { MIN_BLOCK_PX, PX_PER_MINUTE } from '../../lib/constants.ts'
-import { formatDuration, minutesToHM, timeToMinutes } from '../../lib/time.ts'
+import { formatBlockTimeRange, formatDuration, minutesToHM, timeToMinutes } from '../../lib/time.ts'
 import { parseBlockStatus } from '../../lib/routineHabits.ts'
 import { parseRecurrenceFromNotes } from '../../lib/recurrence.ts'
 import type { Area, ScheduleBlock } from '../../types/domain.ts'
@@ -33,16 +33,22 @@ function ScheduleBlockCardComponent({
   const [isResizing, setIsResizing] = useState(false)
   const [previewDuration, setPreviewDuration] = useState<number | null>(null)
 
+  const isContinuation = Boolean(block.is_overnight_continuation)
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, isDragging } = useDraggable({
-    id: `block:${block.id}`,
+    id: isContinuation ? `block-cont:${block.id}` : `block:${block.id}`,
+    disabled: isContinuation,
     data: { type: 'schedule-block', blockId: block.id, durationMinutes: block.planned_duration_minutes },
   })
   const muted = Boolean(area?.is_hidden)
   const parsedStatus = useMemo(() => parseBlockStatus(block), [block.notes, block.is_completed])
   const recurrenceTag = useMemo(() => parseRecurrenceFromNotes(block.notes), [block.notes])
-  const startMinutes = block.start_time ? timeToMinutes(block.start_time) : 0
-  const effectiveDuration = previewDuration ?? block.planned_duration_minutes
-  const height = Math.max(MIN_BLOCK_PX, effectiveDuration * PX_PER_MINUTE)
+  const startMinutes = isContinuation ? 0 : (block.start_time ? timeToMinutes(block.start_time) : 0)
+  const effectiveDuration = isContinuation
+    ? (block.overnight_duration_minutes ?? block.planned_duration_minutes)
+    : (previewDuration ?? block.planned_duration_minutes)
+  const crossesMidnight = !isContinuation && Boolean(block.start_time) && (startMinutes + effectiveDuration > 1440)
+  const visualMinutes = crossesMidnight ? Math.max(15, 1440 - startMinutes) : effectiveDuration
+  const height = Math.max(MIN_BLOCK_PX, visualMinutes * PX_PER_MINUTE)
   const style = {
     '--area-color': area?.color ?? '#8a909c',
     ...(untimed ? {} : { top: `${startMinutes}px`, height: `${height}px` }),
@@ -57,7 +63,7 @@ function ScheduleBlockCardComponent({
     e.preventDefault()
     const startY = e.clientY
     const initialDur = block.planned_duration_minutes
-    const maxAllowed = 1440 - startMinutes
+    const maxAllowed = 1440
     setIsResizing(true)
     setPreviewDuration(initialDur)
 
@@ -119,17 +125,26 @@ function ScheduleBlockCardComponent({
       {/* Fila principal: Manija de arrastre, título prominente y botones de acción */}
       <div className="flex w-full min-w-0 items-center justify-between gap-1">
         <div className="flex min-w-0 flex-1 items-center gap-1">
-          <IconButton
-            ref={setActivatorNodeRef}
-            label={`Mover ${block.title}`}
-            size="sm"
-            className="size-7 shrink-0 cursor-grab touch-none active:cursor-grabbing select-none text-ink-muted hover:text-ink"
-            style={{ touchAction: 'none', WebkitUserSelect: 'none', userSelect: 'none' }}
-            {...attributes}
-            {...listeners}
-          >
-            <GripVertical className="size-4" />
-          </IconButton>
+          {isContinuation ? (
+            <div
+              className="size-7 shrink-0 grid place-items-center select-none text-indigo-400"
+              title="Continuación de ayer (bloque nocturno)"
+            >
+              <span className="text-xs">🌙</span>
+            </div>
+          ) : (
+            <IconButton
+              ref={setActivatorNodeRef}
+              label={`Mover ${block.title}`}
+              size="sm"
+              className="size-7 shrink-0 cursor-grab touch-none active:cursor-grabbing select-none text-ink-muted hover:text-ink"
+              style={{ touchAction: 'none', WebkitUserSelect: 'none', userSelect: 'none' }}
+              {...attributes}
+              {...listeners}
+            >
+              <GripVertical className="size-4" />
+            </IconButton>
+          )}
           {block.is_routine ? (
             <Sparkles aria-label="Rutina cotidiana" className="size-3.5 shrink-0 text-accent" />
           ) : null}
@@ -173,15 +188,30 @@ function ScheduleBlockCardComponent({
 
       {/* Fila secundaria: Horario, duración y estados con alineación limpia bajo el título */}
       <div className="flex w-full min-w-0 items-center gap-1.5 pl-8 text-[10px] tabular-nums text-ink-muted select-none mt-0.5">
-        {block.start_time ? (
+        {block.start_time || isContinuation ? (
           <span className="font-medium text-ink-base">
-            {height >= 90
-              ? `${minutesToHM(startMinutes)} – ${minutesToHM(Math.min(1440, startMinutes + effectiveDuration))}`
-              : minutesToHM(startMinutes)}
+            {isContinuation
+              ? `12:00 AM – ${minutesToHM(effectiveDuration)}`
+              : crossesMidnight
+                ? formatBlockTimeRange(startMinutes, effectiveDuration).label
+                : height >= 90
+                  ? `${minutesToHM(startMinutes)} – ${minutesToHM(startMinutes + effectiveDuration)}`
+                  : minutesToHM(startMinutes)}
           </span>
         ) : null}
-        {block.start_time ? <span>·</span> : null}
-        <span>{formatDuration(effectiveDuration)}</span>
+        {block.start_time || isContinuation ? <span>·</span> : null}
+        <span>{formatDuration(isContinuation ? (block.overnight_duration_minutes ?? effectiveDuration) : effectiveDuration)}</span>
+
+        {crossesMidnight ? (
+          <span className="shrink-0 rounded bg-indigo-500/20 px-1 py-0.2 text-[9px] font-bold text-indigo-300">
+            🌙 Pasa a mañana
+          </span>
+        ) : null}
+        {isContinuation ? (
+          <span className="shrink-0 rounded bg-indigo-500/20 px-1 py-0.2 text-[9px] font-bold text-indigo-300">
+            🌙 Viene de ayer
+          </span>
+        ) : null}
 
         {parsedStatus.status === 'failed_abandoned' ? (
           <span className="shrink-0 rounded bg-danger/20 px-1 py-0.2 text-[9px] font-bold text-danger">
@@ -204,7 +234,7 @@ function ScheduleBlockCardComponent({
         <div className="pointer-events-none absolute bottom-3.5 right-2 z-30 flex items-center gap-1 rounded-md border border-accent/40 bg-surface/95 px-2 py-0.5 text-[11px] font-bold text-accent shadow-xl backdrop-blur-md tabular-nums">
           {block.start_time ? (
             <span>
-              Termina: {minutesToHM(Math.min(1440, startMinutes + effectiveDuration))} ({formatDuration(effectiveDuration)})
+              Termina: {formatBlockTimeRange(startMinutes, effectiveDuration).label} ({formatDuration(effectiveDuration)})
             </span>
           ) : (
             <span>{formatDuration(effectiveDuration)}</span>
@@ -213,7 +243,7 @@ function ScheduleBlockCardComponent({
       ) : null}
 
       {/* Asa inferior para redimensionar en pasos de 15 minutos */}
-      {!untimed ? (
+      {!untimed && !isContinuation ? (
         <div
           role="slider"
           aria-label={`Ajustar duración de ${block.title}`}

@@ -30,7 +30,8 @@ export function resolveStack(
     return { ok: false, reason: 'outside-day' }
   }
 
-  const maxStart = MINUTES_PER_DAY - durationMinutes
+  // Permitir ubicar el inicio en cualquier momento del día (hasta 23:45 / 1425)
+  const maxStart = MINUTES_PER_DAY - SNAP_MINUTES
   let startMinutes = clamp(snapMinutes(proposedStartMinutes, SNAP_MINUTES), 0, maxStart)
   const timedBlocks = blocks
     .filter((block) => block.id !== movingBlockId && block.start_time !== null)
@@ -38,7 +39,7 @@ export function resolveStack(
 
   let magnet: { start: number; distance: number } | null = null
   for (const { block, start } of timedBlocks) {
-    const candidates = [start, start + block.planned_duration_minutes - durationMinutes]
+    const candidates = [start, start + block.planned_duration_minutes]
     for (const candidate of candidates) {
       if (candidate < 0 || candidate > maxStart) continue
       const distance = Math.abs(candidate - startMinutes)
@@ -72,16 +73,13 @@ export function resolveStack(
   const shifted: ScheduleBlock[] = []
 
   for (const item of items) {
-    const nextStart = Math.max(item.startMinutes, cursor)
-    if (nextStart + item.durationMinutes > MINUTES_PER_DAY) {
-      return { ok: false, reason: 'outside-day' }
-    }
+    const nextStart = Math.min(maxStart, Math.max(item.startMinutes, cursor))
     if (item.isMoving) {
       resolvedStart = nextStart
     } else if (nextStart !== item.startMinutes && item.block) {
       shifted.push({ ...item.block, start_time: minutesToTime(nextStart) })
     }
-    cursor = nextStart + item.durationMinutes
+    cursor = Math.min(MINUTES_PER_DAY, nextStart + item.durationMinutes)
   }
 
   return { ok: true, startMinutes: resolvedStart, shifted }
