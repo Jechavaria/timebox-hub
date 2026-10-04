@@ -9,10 +9,10 @@ export interface DetectedLink {
 }
 
 export type CloudDocType =
-  | 'google_docs'
-  | 'google_sheets'
-  | 'google_slides'
-  | 'google_drive'
+  | 'docs'
+  | 'sheets'
+  | 'slides'
+  | 'drive'
   | 'office_word'
   | 'office_excel'
   | 'office_powerpoint'
@@ -32,46 +32,46 @@ export function detectCloudDocService(url: string): CloudDocServiceInfo {
   const u = url.toLowerCase()
   if (u.includes('docs.google.com/document') || u.includes('docs.new')) {
     return {
-      type: 'google_docs',
-      label: 'Google Docs',
-      serviceName: 'Google Docs',
+      type: 'docs',
+      label: 'Documento en la nube',
+      serviceName: 'Documento en la nube',
       isCloudDoc: true,
       badgeColor: 'border-blue-500/40 bg-blue-500/15 text-blue-300',
       textColor: 'text-blue-400',
-      actionLabel: 'Abrir y editar en Google Docs',
+      actionLabel: 'Abrir y editar documento en la nube',
     }
   }
   if (u.includes('docs.google.com/spreadsheets') || u.includes('sheets.new')) {
     return {
-      type: 'google_sheets',
-      label: 'Google Sheets',
-      serviceName: 'Google Sheets',
+      type: 'sheets',
+      label: 'Hoja de cálculo en la nube',
+      serviceName: 'Hoja de cálculo en la nube',
       isCloudDoc: true,
       badgeColor: 'border-emerald-500/40 bg-emerald-500/15 text-emerald-300',
       textColor: 'text-emerald-400',
-      actionLabel: 'Abrir y editar en Google Sheets',
+      actionLabel: 'Abrir y editar hoja de cálculo en la nube',
     }
   }
   if (u.includes('docs.google.com/presentation') || u.includes('slides.new')) {
     return {
-      type: 'google_slides',
-      label: 'Google Slides',
-      serviceName: 'Google Slides',
+      type: 'slides',
+      label: 'Presentación en la nube',
+      serviceName: 'Presentación en la nube',
       isCloudDoc: true,
       badgeColor: 'border-amber-500/40 bg-amber-500/15 text-amber-300',
       textColor: 'text-amber-400',
-      actionLabel: 'Abrir y editar en Google Slides',
+      actionLabel: 'Abrir y editar presentación en la nube',
     }
   }
   if (u.includes('drive.google.com')) {
     return {
-      type: 'google_drive',
-      label: 'Google Drive',
-      serviceName: 'Google Drive',
+      type: 'drive',
+      label: 'Almacenamiento en la nube',
+      serviceName: 'Almacenamiento en la nube',
       isCloudDoc: true,
       badgeColor: 'border-cyan-500/40 bg-cyan-500/15 text-cyan-300',
       textColor: 'text-cyan-400',
-      actionLabel: 'Abrir en Google Drive',
+      actionLabel: 'Abrir en la nube',
     }
   }
   if (u.includes('word.office.com') || (u.includes('sharepoint.com') && u.includes('.doc'))) {

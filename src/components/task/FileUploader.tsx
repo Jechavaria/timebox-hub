@@ -89,10 +89,10 @@ export function FileUploader({ disabled = false, onUpload, onAddLink }: FileUplo
       type === 'docs' ? 'https://docs.new' : type === 'sheets' ? 'https://sheets.new' : 'https://slides.new'
     const defaultTitle =
       type === 'docs'
-        ? 'Documento de Google'
+        ? 'Documento en la nube'
         : type === 'sheets'
-          ? 'Hoja de cálculo de Google'
-          : 'Presentación de Google'
+          ? 'Hoja de cálculo en la nube'
+          : 'Presentación en la nube'
 
     window.open(targetUrl, '_blank', 'noopener,noreferrer')
     setPendingDoc({ type, title: defaultTitle })
@@ -112,13 +112,13 @@ export function FileUploader({ disabled = false, onUpload, onAddLink }: FileUplo
 
       const text = (await navigator.clipboard.readText()).trim()
       if (!text) {
-        setError('El portapapeles está vacío. Por favor copia la URL de la pestaña de Google y vuelve a presionar este botón.')
+        setError('El portapapeles está vacío. Por favor copia la URL de la pestaña del documento y vuelve a presionar este botón.')
         return
       }
 
-      const isUrl = /^https?:\/\//i.test(text) || text.includes('docs.google.com') || text.includes('google.com')
+      const isUrl = /^https?:\/\//i.test(text)
       if (!isUrl) {
-        setError('El texto copiado no parece ser un enlace web. Copia la URL de Google Docs de la barra de direcciones.')
+        setError('El texto copiado no parece ser un enlace web. Copia la URL de la barra de direcciones.')
         setLinkUrl(text)
         urlInputRef.current?.focus()
         return
@@ -205,7 +205,7 @@ export function FileUploader({ disabled = false, onUpload, onAddLink }: FileUplo
         ) : null}
       </label>
 
-      {/* Botón y formulario para añadir enlaces y documentos de Google */}
+      {/* Botón y formulario para añadir enlaces y documentos en la nube */}
       {onAddLink ? (
         <div className="flex flex-col gap-2">
           {!showLinkForm ? (
@@ -247,11 +247,11 @@ export function FileUploader({ disabled = false, onUpload, onAddLink }: FileUplo
                 </button>
               </div>
 
-              {/* Opciones rápidas de Google Docs dentro de Añadir Enlace */}
+              {/* Opciones rápidas de documentos en la nube dentro de Añadir Enlace */}
               <div className="flex flex-col gap-2 rounded-xl border border-blue-500/25 bg-blue-500/5 p-2.5">
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] font-semibold text-blue-300">
-                    Crear nuevo documento de Google:
+                    Crear nuevo documento en la nube:
                   </span>
                   <span className="text-[10px] text-blue-300/70">Abre y vincula a esta tarea</span>
                 </div>
@@ -261,45 +261,45 @@ export function FileUploader({ disabled = false, onUpload, onAddLink }: FileUplo
                     type="button"
                     onClick={() => handleCreateCloudDoc('docs')}
                     className="flex items-center gap-1.5 rounded-lg border border-blue-500/40 bg-blue-500/15 px-2.5 py-1.5 text-xs font-semibold text-blue-200 hover:border-blue-400 hover:bg-blue-500/30 transition-all cursor-pointer shadow-xs"
-                    title="Crear un nuevo Google Doc y vincularlo a esta tarea"
+                    title="Crear un nuevo documento de texto y vincularlo a esta tarea"
                   >
                     <FileText className="size-3.5 text-blue-400" />
-                    <span>+ Google Doc</span>
+                    <span>+ Documento de texto</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => handleCreateCloudDoc('sheets')}
                     className="flex items-center gap-1.5 rounded-lg border border-emerald-500/40 bg-emerald-500/15 px-2.5 py-1.5 text-xs font-semibold text-emerald-200 hover:border-emerald-400 hover:bg-emerald-500/30 transition-all cursor-pointer shadow-xs"
-                    title="Crear una nueva hoja de Google Sheets y vincularla a esta tarea"
+                    title="Crear una nueva hoja de cálculo y vincularla a esta tarea"
                   >
                     <FileSpreadsheet className="size-3.5 text-emerald-400" />
-                    <span>+ Google Sheet</span>
+                    <span>+ Hoja de cálculo</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => handleCreateCloudDoc('slides')}
                     className="flex items-center gap-1.5 rounded-lg border border-amber-500/40 bg-amber-500/15 px-2.5 py-1.5 text-xs font-semibold text-amber-200 hover:border-amber-400 hover:bg-amber-500/30 transition-all cursor-pointer shadow-xs"
-                    title="Crear una nueva presentación de Google Slides y vincularla a esta tarea"
+                    title="Crear una nueva presentación y vincularla a esta tarea"
                   >
                     <Presentation className="size-3.5 text-amber-400" />
-                    <span>+ Google Slides</span>
+                    <span>+ Presentación</span>
                   </button>
                 </div>
 
-                {/* Banner guiado cuando se acaba de abrir un documento nuevo de Google */}
+                {/* Banner guiado cuando se acaba de abrir un documento nuevo */}
                 {pendingDoc ? (
                   <div className="mt-1 flex flex-col gap-2 rounded-xl border border-blue-400/40 bg-blue-500/20 p-2.5 animate-fade-in">
                     <div className="flex items-start gap-2">
                       <Sparkles className="size-4 text-blue-300 shrink-0 mt-0.5" />
                       <div className="flex flex-col gap-0.5 text-xs">
                         <span className="font-semibold text-white">
-                          ¡Se abrió tu nuevo {pendingDoc.title} en Google!
+                          ¡Se abrió tu nuevo {pendingDoc.title}!
                         </span>
                         <span className="text-[11px] text-blue-200 leading-tight">
                           Para que quede adjunto a esta tarea y puedas volver a él en cualquier momento:
-                          copia la URL de la pestaña de Google que se abrió y presiona el botón:
+                          copia la URL de la pestaña que se abrió y presiona el botón:
                         </span>
                       </div>
                     </div>
@@ -346,7 +346,7 @@ export function FileUploader({ disabled = false, onUpload, onAddLink }: FileUplo
                     <input
                       ref={urlInputRef}
                       type="text"
-                      placeholder="https://docs.google.com/... o enlace web"
+                      placeholder="https://... enlace al documento o web"
                       value={linkUrl}
                       onChange={(e) => {
                         setLinkUrl(e.target.value)
@@ -374,7 +374,7 @@ export function FileUploader({ disabled = false, onUpload, onAddLink }: FileUplo
                   <label className="text-xs font-medium text-ink">Título o nombre (opcional)</label>
                   <input
                     type="text"
-                    placeholder="Ej. Mi apunte en Docs, Finanzas en Sheets, Referencia..."
+                    placeholder="Ej. Apuntes, Finanzas, Proyecto..."
                     value={linkTitle}
                     onChange={(e) => setLinkTitle(e.target.value)}
                     className="glass-input text-xs"
@@ -383,7 +383,7 @@ export function FileUploader({ disabled = false, onUpload, onAddLink }: FileUplo
 
                 {detectedDoc?.isCloudDoc ? (
                   <p className="text-[11px] text-blue-300/90 leading-tight">
-                    ✨ Los cambios que hagas en Google Docs / Sheets se guardarán automáticamente en la nube sin tener que volver a subir o descargar el archivo.
+                    ✨ Los cambios que hagas en tus documentos en línea se guardarán automáticamente en la nube sin tener que volver a subir o descargar el archivo.
                   </p>
                 ) : null}
 

@@ -182,7 +182,6 @@ export function FilePreviewModal({
             )
             const isSpreadsheet = file.file_name.endsWith('.xlsx') || file.file_name.endsWith('.xls') || file.file_type.includes('spreadsheet')
             const isPresentation = file.file_name.endsWith('.pptx') || file.file_name.endsWith('.ppt')
-            const googleViewerUrl = previewUrl ? `https://docs.google.com/viewer?url=${encodeURIComponent(previewUrl)}` : null
             const officeViewerUrl = previewUrl ? `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(previewUrl)}` : null
 
             return (
@@ -206,28 +205,16 @@ export function FilePreviewModal({
 
                 {isOfficeDoc ? (
                   <div className="flex flex-col gap-2.5 w-full pt-1">
-                    <div className="flex flex-col sm:flex-row gap-2 justify-center w-full">
-                      {googleViewerUrl ? (
-                        <a
-                          href={googleViewerUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center justify-center gap-1.5 rounded-xl border border-blue-500/40 bg-blue-500/15 px-3 py-2 text-xs font-semibold text-blue-300 hover:border-blue-400 hover:bg-blue-500/25 transition-all cursor-pointer shadow-sm"
-                        >
-                          <ExternalLink className="size-3.5" />
-                          <span>Ver en Google Docs Viewer</span>
-                        </a>
-                      ) : null}
-
+                    <div className="flex gap-2 justify-center w-full">
                       {officeViewerUrl ? (
                         <a
                           href={officeViewerUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex items-center justify-center gap-1.5 rounded-xl border border-amber-500/40 bg-amber-500/15 px-3 py-2 text-xs font-semibold text-amber-300 hover:border-amber-400 hover:bg-amber-500/25 transition-all cursor-pointer shadow-sm"
+                          className="flex items-center justify-center gap-1.5 rounded-xl border border-blue-500/40 bg-blue-500/15 px-3 py-2 text-xs font-semibold text-blue-300 hover:border-blue-400 hover:bg-blue-500/25 transition-all cursor-pointer shadow-sm"
                         >
                           <ExternalLink className="size-3.5" />
-                          <span>Ver en Office Online</span>
+                          <span>Ver en visor en línea</span>
                         </a>
                       ) : null}
                     </div>
@@ -237,7 +224,7 @@ export function FilePreviewModal({
                         💡 ¿Quieres editar en vivo sin descargar y resubir?
                       </p>
                       <p className="text-[11px]">
-                        Puedes adjuntar un enlace de <strong>Google Docs</strong> o <strong>Google Sheets</strong> a esta tarea. Google guarda los cambios automáticamente en la nube en tiempo real.
+                        Puedes adjuntar un enlace a un documento o planilla en la nube. Los cambios se guardan automáticamente en tiempo real.
                       </p>
                     </div>
 

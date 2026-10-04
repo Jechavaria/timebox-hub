@@ -40,16 +40,16 @@ function FileKindIcon({ file }: { file: TaskFile }) {
   const iconClass = 'size-5 shrink-0 text-ink-muted'
   if (file.file_type === 'link') {
     const service = detectCloudDocService(file.file_url)
-    if (service.type === 'google_docs' || service.type === 'office_word') {
+    if (service.type === 'docs' || service.type === 'office_word') {
       return <FileText className="size-5 shrink-0 text-blue-400" aria-hidden="true" />
     }
-    if (service.type === 'google_sheets' || service.type === 'office_excel') {
+    if (service.type === 'sheets' || service.type === 'office_excel') {
       return <FileSpreadsheet className="size-5 shrink-0 text-emerald-400" aria-hidden="true" />
     }
-    if (service.type === 'google_slides' || service.type === 'office_powerpoint') {
+    if (service.type === 'slides' || service.type === 'office_powerpoint') {
       return <Presentation className="size-5 shrink-0 text-amber-400" aria-hidden="true" />
     }
-    if (service.type === 'google_drive') {
+    if (service.type === 'drive') {
       return <Cloud className="size-5 shrink-0 text-cyan-400" aria-hidden="true" />
     }
     return <Link2 className="size-5 shrink-0 text-accent" aria-hidden="true" />

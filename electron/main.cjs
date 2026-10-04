@@ -34,7 +34,7 @@ function createWindow() {
     win.show();
   });
 
-  // Abrir enlaces externos (Google Docs, enlaces web, adjuntos) en el navegador predeterminado
+  // Abrir enlaces externos (documentos en la nube, enlaces web, adjuntos) en el navegador predeterminado
   win.webContents.setWindowOpenHandler(({ url }) => {
     if (url.startsWith('http:') || url.startsWith('https:')) {
       shell.openExternal(url);
