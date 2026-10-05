@@ -9,6 +9,7 @@ import {
   type RecurrenceFrequency,
   type RecurrenceRule,
 } from '../../lib/recurrence.ts'
+import { isValidLocalDateString, toLocalDateString } from '../../lib/time.ts'
 import type { LocalDateString } from '../../types/domain.ts'
 
 interface RecurrenceSelectorProps {
@@ -24,8 +25,12 @@ export function RecurrenceSelector({
   onChange,
   disabled = false,
 }: RecurrenceSelectorProps) {
-  const options = useMemo(() => getRecurrenceOptionsForDate(baseDate), [baseDate])
-  const baseDayOfWeek = useMemo(() => getDayOfWeek(baseDate), [baseDate])
+  const safeBaseDate = useMemo(() => {
+    return isValidLocalDateString(baseDate) ? baseDate : toLocalDateString(new Date())
+  }, [baseDate])
+
+  const options = useMemo(() => getRecurrenceOptionsForDate(safeBaseDate), [safeBaseDate])
+  const baseDayOfWeek = useMemo(() => getDayOfWeek(safeBaseDate), [safeBaseDate])
 
   const handleFrequencyChange = (freq: RecurrenceFrequency) => {
     if (freq === 'none') {
@@ -219,7 +224,7 @@ export function RecurrenceSelector({
             <CalendarSync className="size-4 shrink-0 text-blue-400 mt-0.5" />
             <div className="leading-snug">
               <span className="font-semibold text-blue-200">
-                {describeRecurrenceRule(value, baseDate)}
+                {describeRecurrenceRule(value, safeBaseDate)}
               </span>
               <p className="text-[10px] text-blue-300/80 mt-0.5">
                 Se crearán los bloques automáticamente en tu calendario a la hora establecida.

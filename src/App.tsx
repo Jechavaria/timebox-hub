@@ -2,6 +2,7 @@ import { Analytics } from '@vercel/analytics/react'
 import { AuthGate } from './components/auth/AuthGate.tsx'
 import { AppShell } from './components/layout/AppShell.tsx'
 import { BackgroundLayer } from './components/layout/BackgroundLayer.tsx'
+import { ErrorBoundary } from './components/ui/ErrorBoundary.tsx'
 import { AppearanceProvider } from './context/AppearanceProvider.tsx'
 import { AuthProvider } from './context/AuthProvider.tsx'
 import { ToastProvider } from './context/ToastProvider.tsx'
@@ -16,7 +17,9 @@ export default function App() {
       <ToastProvider>
         <AuthProvider>
           <AuthGate>
-            <AppShell />
+            <ErrorBoundary>
+              <AppShell />
+            </ErrorBoundary>
           </AuthGate>
         </AuthProvider>
       </ToastProvider>

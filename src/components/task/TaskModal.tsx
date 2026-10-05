@@ -1,7 +1,7 @@
 import { useEffect, useId, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import { CalendarPlus, Check } from 'lucide-react'
-import { addDays, minutesToHM, timeToMinutes, toLocalDateString } from '../../lib/time.ts'
+import { addDays, isValidLocalDateString, minutesToHM, timeToMinutes, toLocalDateString } from '../../lib/time.ts'
 import { usePlanner } from '../../hooks/usePlanner.ts'
 import { useTaskFiles } from '../../hooks/useTaskFiles.ts'
 import { useToast } from '../../hooks/useToast.ts'
@@ -93,6 +93,10 @@ export function TaskModal({ task, onClose, onSave }: TaskModalProps) {
 
     // Si el usuario eligió fecha para planificarla directamente
     if (planDate) {
+      if (!isValidLocalDateString(planDate)) {
+        setError('Por favor selecciona una fecha válida.')
+        return
+      }
       let startMinutes: number | null = null
       if (planTime) {
         try {
@@ -266,6 +270,9 @@ export function TaskModal({ task, onClose, onSave }: TaskModalProps) {
                     type="date"
                     value={planDate}
                     onChange={(e) => setPlanDate(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') e.preventDefault()
+                    }}
                     className="glass-input mt-1 text-xs"
                   />
                 </div>
@@ -278,6 +285,9 @@ export function TaskModal({ task, onClose, onSave }: TaskModalProps) {
                     type="time"
                     value={planTime}
                     onChange={(e) => setPlanTime(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') e.preventDefault()
+                    }}
                     className="glass-input mt-1 text-xs tabular-nums"
                   />
                 </div>
@@ -320,7 +330,7 @@ export function TaskModal({ task, onClose, onSave }: TaskModalProps) {
                 ) : null}
               </div>
 
-              {planDate ? (
+              {isValidLocalDateString(planDate) ? (
                 <div className="pt-1">
                   <RecurrenceSelector
                     baseDate={planDate}

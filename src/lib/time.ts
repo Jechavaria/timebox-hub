@@ -26,23 +26,46 @@ export function toLocalDateString(date: Date): LocalDateString {
   return `${year}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`
 }
 
-export function parseLocalDate(value: LocalDateString): Date {
+/** Valida que un valor tenga exactamente formato YYYY-MM-DD y corresponda a una fecha del calendario real. */
+export function isValidLocalDateString(value: unknown): value is LocalDateString {
+  if (typeof value !== 'string') return false
   const match = DATE_PATTERN.exec(value)
-  if (!match) {
-    throw new RangeError(`Fecha inválida "${value}": se esperaba YYYY-MM-DD`)
-  }
+  if (!match) return false
+  const year = Number(match[1])
+  const month = Number(match[2])
+  const day = Number(match[3])
+  if (year < 1 || year > 9999 || month < 1 || month > 12 || day < 1 || day > 31) return false
+  const date = new Date(year, month - 1, day)
+  date.setFullYear(year)
+  return (
+    date.getFullYear() === year &&
+    date.getMonth() === month - 1 &&
+    date.getDate() === day
+  )
+}
+
+/** Parsea una fecha local de forma segura devolviendo null en lugar de lanzar una excepción. */
+export function safeParseLocalDate(value: unknown): Date | null {
+  if (!isValidLocalDateString(value)) return null
+  const match = DATE_PATTERN.exec(value)!
   const year = Number(match[1])
   const month = Number(match[2])
   const day = Number(match[3])
   const date = new Date(year, month - 1, day)
-  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
-    throw new RangeError(`Fecha inexistente: "${value}"`)
+  date.setFullYear(year)
+  return date
+}
+
+export function parseLocalDate(value: LocalDateString): Date {
+  const date = safeParseLocalDate(value)
+  if (!date) {
+    throw new RangeError(`Fecha inválida o inexistente "${value}": se esperaba YYYY-MM-DD válida`)
   }
   return date
 }
 
 export function addDays(value: LocalDateString, days: number): LocalDateString {
-  const date = parseLocalDate(value)
+  const date = safeParseLocalDate(value) ?? new Date()
   date.setDate(date.getDate() + days)
   return toLocalDateString(date)
 }
@@ -173,6 +196,9 @@ export function formatClockTime(date: Date): string {
 }
 
 export function formatDateShort(date: Date): string {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
+    return ''
+  }
   return shortDateFormatter.format(date)
 }
 

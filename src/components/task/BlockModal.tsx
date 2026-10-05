@@ -179,6 +179,9 @@ export function BlockModal({ block, onClose, onSave }: BlockModalProps) {
                 type="time"
                 value={startTime}
                 onChange={(event) => setStartTime(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') event.preventDefault()
+                }}
                 className="glass-input"
               />
               <p className="text-xs text-ink-faint">Deja la hora vacía para mover el bloque a «Sin hora».</p>

@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import clsx from 'clsx'
 import { X } from 'lucide-react'
+import { ErrorBoundary } from './ErrorBoundary.tsx'
 import { IconButton } from './IconButton.tsx'
 
 type ModalSize = 'sm' | 'md' | 'lg'
@@ -108,6 +109,14 @@ export function Modal({
     const handleKeyDown = (event: KeyboardEvent) => {
       if (openModalIds[openModalIds.length - 1] !== id) return
       if (event.key === 'Escape' && dismissible) {
+        const active = document.activeElement
+        if (
+          active instanceof HTMLInputElement &&
+          (active.type === 'date' || active.type === 'time' || active.type === 'datetime-local')
+        ) {
+          active.blur()
+          return
+        }
         event.preventDefault()
         onCloseRef.current()
       } else if (event.key === 'Tab') {
@@ -165,7 +174,9 @@ export function Modal({
           ) : null}
         </header>
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-5 sm:px-6">
-          {children}
+          <ErrorBoundary>
+            {children}
+          </ErrorBoundary>
         </div>
         {footer ? (
           <footer className="border-t border-glass-border px-5 py-4 sm:px-6">{footer}</footer>

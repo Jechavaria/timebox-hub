@@ -479,6 +479,9 @@ export function RoutineModal({ date, onClose, onSave }: RoutineModalProps) {
                 type="time"
                 value={startTime}
                 onChange={(e) => setStartTime(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') e.preventDefault()
+                }}
                 className="glass-input w-full"
               />
             </div>

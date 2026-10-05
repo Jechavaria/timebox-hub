@@ -1,4 +1,4 @@
-import { addDays, parseLocalDate } from './time.ts'
+import { addDays, isValidLocalDateString, safeParseLocalDate, toLocalDateString } from './time.ts'
 import type { LocalDateString } from '../types/domain.ts'
 
 export type { LocalDateString } from '../types/domain.ts'
@@ -43,9 +43,11 @@ export const DEFAULT_RECURRENCE_COUNTS: Record<RecurrenceFrequency, number> = {
 
 /**
  * Obtiene el día de la semana (0 = Domingo, 1 = Lunes, ..., 6 = Sábado) de una fecha YYYY-MM-DD.
+ * Nunca lanza excepciones ante fechas parciales o inválidas.
  */
 export function getDayOfWeek(dateStr: LocalDateString): number {
-  return parseLocalDate(dateStr).getDay()
+  const parsed = safeParseLocalDate(dateStr)
+  return parsed ? parsed.getDay() : 1 // 1 = Lunes por defecto
 }
 
 /**
@@ -53,7 +55,7 @@ export function getDayOfWeek(dateStr: LocalDateString): number {
  */
 export function getWeekdayNameEs(dateStr: LocalDateString): string {
   const day = getDayOfWeek(dateStr)
-  return ES_WEEKDAY_NAMES[day] ?? 'día'
+  return ES_WEEKDAY_NAMES[day] ?? 'lunes'
 }
 
 /**
@@ -109,16 +111,17 @@ export function calculateRecurringDates(
   startDate: LocalDateString,
   rule: RecurrenceRule,
 ): LocalDateString[] {
+  const validStart = isValidLocalDateString(startDate) ? startDate : toLocalDateString(new Date())
   if (rule.frequency === 'none') {
-    return [startDate]
+    return [validStart]
   }
 
   const targetCount = Math.max(1, Math.min(365, rule.count ?? DEFAULT_RECURRENCE_COUNTS[rule.frequency]))
-  const results: LocalDateString[] = [startDate]
-  const seen = new Set<string>([startDate])
+  const results: LocalDateString[] = [validStart]
+  const seen = new Set<string>([validStart])
 
   if (rule.frequency === 'daily') {
-    let current = startDate
+    let current = validStart
     while (results.length < targetCount) {
       current = addDays(current, 1)
       if (!seen.has(current)) {
