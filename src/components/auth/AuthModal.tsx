@@ -62,6 +62,7 @@ export function AuthModal() {
   const {
     signIn,
     signUp,
+    signOut,
     requestPasswordReset,
     verifyRecoveryCode,
     updatePassword,
@@ -276,8 +277,15 @@ export function AuthModal() {
 
       if (!result.ok) {
         setError(result.message)
+        return
       }
-      // Al actualizar exitosamente, AuthGate desmontará este modal y mostrará el dashboard
+
+      // Cerrar la sesión de recuperación para que el usuario inicie sesión con su nueva clave
+      await signOut()
+      setInternalMode('login')
+      setPassword('')
+      setConfirmPassword('')
+      setNotice('¡Contraseña actualizada con éxito! Ya puedes iniciar sesión con tu nueva contraseña.')
     }
   }
 

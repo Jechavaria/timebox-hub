@@ -1,14 +1,6 @@
 @import "tailwindcss";
 
-/*
- * Intensidad de la luz que emiten los botones sobre las superficies acrílicas.
- * Registrada para poder interpolarla con transiciones (fade-in / pulso al hacer clic).
- */
-@property --glow-alpha {
-  syntax: "<number>";
-  inherits: true;
-  initial-value: 0;
-}
+
 
 @theme static {
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
@@ -105,14 +97,7 @@
     --ambient-base-from: oklch(0.17 0.045 var(--accent-h));
     --ambient-base-to: oklch(0.12 0.035 calc(var(--accent-h) + 45));
 
-    /* Luz concentrada de los botones sobre el borde acrílico (posición en viewport). */
-    --pointer-x: -100vw;
-    --pointer-y: -100vh;
     --glow-color: var(--color-accent);
-    --light-color: var(--color-accent);
-    --glow-alpha: 0;
-    --light-radius: 120px;
-    transition: --glow-alpha 240ms var(--ease-out-soft);
 
     --glass-shadow:
       inset 0 1px 0 0 rgb(255 255 255 / 0.07), 0 12px 32px -12px rgb(0 0 0 / 0.65),
@@ -123,17 +108,6 @@
     --float-shadow:
       inset 0 1px 0 0 rgb(255 255 255 / 0.1), 0 28px 60px -18px rgb(0 0 0 / 0.85),
       0 6px 14px -6px rgb(0 0 0 / 0.55);
-
-    --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .09 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  }
-
-  :root[data-glow="hover"] {
-    --glow-alpha: 0.11;
-  }
-
-  :root[data-glow="press"] {
-    --glow-alpha: 0.24;
-    transition-duration: 70ms;
   }
 
   /* ---------- Modo claro ---------- */
@@ -197,6 +171,8 @@
     inset: 0;
     z-index: -2;
     pointer-events: none;
+    transform: translateZ(0);
+    contain: strict;
     background:
       radial-gradient(56rem 38rem at 6% -10%, oklch(var(--ambient-l) 0.15 var(--accent-h) / var(--ambient-a)), transparent 62%),
       radial-gradient(48rem 34rem at 100% 2%, oklch(var(--ambient-l) 0.14 calc(var(--accent-h) + 55) / calc(var(--ambient-a) * 0.75)), transparent 60%),
@@ -259,7 +235,9 @@
 
 /* Superficies acrílicas nítidas sin artefactos de luz en el fondo */
 @utility glass-panel {
-  @apply backdrop-blur-md;
+  @apply backdrop-blur-sm;
+  contain: paint;
+  isolation: isolate;
   border: 1px solid var(--color-glass-border);
   border-radius: var(--radius-glass);
   background-color: var(--color-glass);
@@ -280,13 +258,11 @@
   border-left: 3.5px solid var(--block-color);
   border-radius: var(--radius-block);
   background-color: color-mix(in oklab, var(--block-color) 24%, color-mix(in oklab, var(--color-canvas) 66%, transparent));
-  background-image:
-    var(--grain),
-    linear-gradient(180deg, rgb(255 255 255 / 0.08), rgb(255 255 255 / 0) 65%);
+  background-image: linear-gradient(180deg, rgb(255 255 255 / 0.08), rgb(255 255 255 / 0) 65%);
   box-shadow: var(--block-shadow);
   color: var(--color-ink);
-  transition-property: background-color, border-color, box-shadow, filter, opacity;
-  transition-duration: 200ms;
+  transition-property: background-color, border-color, box-shadow, opacity;
+  transition-duration: 150ms;
   transition-timing-function: var(--ease-out-soft);
 
   @media (hover: hover) {
@@ -366,8 +342,8 @@
  * Concentrado, sin dispersión excesiva fuera del botón (~20% reducido y bordes definidos).
  */
 :where(button, a[href], [role="button"], summary):not(:disabled) {
-  transition-property: background-color, border-color, color, filter, opacity, scale, transform, box-shadow;
-  transition-duration: 200ms;
+  transition-property: background-color, border-color, color, opacity, transform;
+  transition-duration: 150ms;
   transition-timing-function: var(--ease-out-soft);
 }
 

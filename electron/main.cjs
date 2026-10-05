@@ -1,6 +1,10 @@
 const { app, BrowserWindow, Menu, shell, session } = require('electron');
 const path = require('path');
 
+// Priorizar GPU integrada de bajo consumo para evitar consumo de energía excesivo y calor
+app.commandLine.appendSwitch('force_low_power_gpu');
+app.commandLine.appendSwitch('disable-renderer-backgrounding', 'false');
+
 function createWindow() {
   const win = new BrowserWindow({
     width: 1400,
@@ -17,6 +21,7 @@ function createWindow() {
       contextIsolation: true,
       sandbox: true,
       spellcheck: false,
+      backgroundThrottling: true,
     },
   });
 
