@@ -62,7 +62,7 @@ export function Navbar() {
         >
           {isAlertingActive ? (
             <>
-              <BellRing className="size-4 animate-pulse" />
+              <BellRing className="size-4" />
               <span className="absolute right-1 top-1 size-2 rounded-full bg-success shadow-[0_0_8px_rgb(95_217_160_/_0.8)]" />
             </>
           ) : (

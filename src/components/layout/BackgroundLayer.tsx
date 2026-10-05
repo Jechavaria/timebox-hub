@@ -35,7 +35,6 @@ export function BackgroundLayer() {
     <div
       aria-hidden="true"
       className="pointer-events-none fixed inset-0 -z-1 overflow-hidden"
-      style={{ transform: 'translateZ(0)', willChange: 'transform' }}
     >
       {activeBackground.kind === 'video' ? (
         <video
@@ -48,7 +47,6 @@ export function BackgroundLayer() {
           disablePictureInPicture
           preload="auto"
           className="size-full animate-fade-in object-cover"
-          style={{ transform: 'translateZ(0)', willChange: 'transform' }}
         />
       ) : (
         <img

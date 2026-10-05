@@ -250,6 +250,24 @@
   box-shadow: var(--float-shadow);
 }
 
+/* Optimización de GPU cuando hay video de fondo:
+   Desactivar backdrop-filter dinámico para que la decodificación de video use aceleración por hardware
+   (DirectX Video Overlay) sin saturar el motor 3D de la GPU con pases de desenfoque gaussiano a 60 FPS */
+:root[data-has-video="true"] .glass-panel,
+:root[data-has-video="true"] .glass-popover,
+:root[data-has-video="true"] .glass-block {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+:root[data-has-video="true"] .glass-panel {
+  background-color: color-mix(in oklab, var(--color-surface) 84%, transparent);
+}
+
+:root[data-has-video="true"] .glass-popover {
+  background-color: color-mix(in oklab, var(--color-surface) 95%, transparent);
+}
+
 @utility glass-block {
   --block-color: var(--area-color, var(--color-accent));
   border: 1px solid color-mix(in oklab, var(--block-color) 42%, var(--color-glass-border));
@@ -370,6 +388,12 @@
     --animate-fade-in: none;
     --animate-toast-in: none;
     transition: none;
+  }
+
+  .glass-panel,
+  .glass-popover {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
   }
 
   :where(button, a[href], [role="button"], summary) {

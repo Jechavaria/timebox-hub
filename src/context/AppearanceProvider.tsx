@@ -121,6 +121,7 @@ export function AppearanceProvider({ children }: { children: ReactNode }) {
   useLayoutEffect(() => {
     const root = document.documentElement
     root.dataset.theme = theme
+    root.dataset.hasVideo = activeBackground.kind === 'video' ? 'true' : 'false'
     root.style.setProperty('--accent-h', String(activeTone.h))
     root.style.setProperty('--accent-c', String(activeTone.c))
     root.style.setProperty('--bg-dim', String(activeDim))
@@ -129,7 +130,7 @@ export function AppearanceProvider({ children }: { children: ReactNode }) {
     document
       .querySelector('meta[name="theme-color"]')
       ?.setAttribute('content', theme === 'dark' ? '#0b0d14' : '#eef1f7')
-  }, [theme, activeTone.h, activeTone.c, activeDim])
+  }, [theme, activeTone.h, activeTone.c, activeDim, activeBackground.kind])
 
   // Persistir preferencias (incluido el último acento para el script anti-parpadeo).
   useEffect(() => {
