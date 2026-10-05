@@ -470,7 +470,7 @@ export function AuthModal() {
             <div className="flex flex-col gap-3">
               <div className="flex items-center justify-between rounded-xl bg-glass px-3.5 py-2.5 text-xs text-ink-muted">
                 <span>
-                  Código enviado a: <strong className="font-medium text-ink">{email}</strong>
+                  Correo enviado a: <strong className="font-medium text-ink">{email}</strong>
                 </span>
                 <button
                   type="button"
@@ -479,6 +479,10 @@ export function AuthModal() {
                 >
                   Cambiar
                 </button>
+              </div>
+
+              <div className="rounded-xl border border-accent/20 bg-accent/5 p-3 text-xs text-ink-muted leading-relaxed">
+                💡 <strong>Tip:</strong> Puedes pulsar directamente el botón/enlace que recibiste en tu correo para pasar a definir tu nueva clave, o escribir el código numérico aquí abajo si tu plantilla lo muestra.
               </div>
 
               <div className="flex flex-col gap-1.5">
