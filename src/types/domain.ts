@@ -21,8 +21,9 @@ export type Credentials = {
 }
 
 export type AuthFailure = { ok: false; message: string }
-export type AuthResult = { ok: true; needsEmailConfirmation: boolean } | AuthFailure
+export type AuthResult = { ok: true; needsEmailConfirmation?: boolean } | AuthFailure
 export type SignOutResult = { ok: true } | AuthFailure
+export type PasswordResetResult = { ok: true } | AuthFailure
 export type MutationResult<T> = { ok: true; data: T } | { ok: false; message: string }
 
 export type Area = {

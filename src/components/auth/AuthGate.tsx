@@ -23,9 +23,9 @@ interface AuthGateProps {
 
 /** Solo monta la aplicación cuando hay sesión; sin sesión no se hace ninguna petición de datos. */
 export function AuthGate({ children }: AuthGateProps) {
-  const { status } = useAuth()
+  const { status, isRecoveringPassword } = useAuth()
 
   if (status === 'loading') return <SplashScreen />
-  if (status === 'unauthenticated') return <AuthModal />
+  if (status === 'unauthenticated' || isRecoveringPassword) return <AuthModal />
   return <>{children}</>
 }

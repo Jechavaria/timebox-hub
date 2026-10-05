@@ -10,10 +10,16 @@ const MESSAGES_BY_CODE: Readonly<Record<string, string>> = {
   email_not_confirmed: 'Confirma tu correo antes de iniciar sesión. Revisa tu bandeja de entrada.',
   user_already_exists: EMAIL_TAKEN_MESSAGE,
   email_exists: EMAIL_TAKEN_MESSAGE,
+  user_not_found: 'No existe ninguna cuenta registrada con este correo.',
   weak_password: `La contraseña es demasiado débil. Usa al menos ${MIN_PASSWORD_LENGTH} caracteres.`,
   same_password: 'La nueva contraseña debe ser distinta de la actual.',
   over_request_rate_limit: 'Demasiados intentos. Espera un momento y vuelve a intentarlo.',
   over_email_send_rate_limit: 'Se enviaron demasiados correos. Espera unos minutos antes de reintentar.',
+  otp_expired: 'El código de verificación ha expirado o ya fue utilizado. Solicita uno nuevo.',
+  token_expired: 'El código de verificación ha expirado. Solicita uno nuevo.',
+  invalid_grant: 'El código ingresado es incorrecto o ha expirado.',
+  bad_jwt: 'El código de verificación no es válido.',
+  otp_disabled: 'La verificación por código no está disponible.',
   signup_disabled: 'El registro de cuentas nuevas está deshabilitado.',
   email_provider_disabled: 'El acceso con correo y contraseña está deshabilitado.',
   email_address_invalid: 'El correo ingresado no es válido.',
@@ -37,6 +43,23 @@ export function getAuthErrorMessage(error: unknown): string {
   const code = readField(error, 'code')
   if (typeof code === 'string' && Object.hasOwn(MESSAGES_BY_CODE, code)) {
     return MESSAGES_BY_CODE[code]
+  }
+
+  const message = readField(error, 'message')
+  if (typeof message === 'string') {
+    const lower = message.toLowerCase()
+    if (lower.includes('expired')) {
+      return 'El código ha expirado. Solicita un nuevo código de verificación.'
+    }
+    if (lower.includes('invalid') || lower.includes('token') || lower.includes('otp')) {
+      return 'El código ingresado es incorrecto o no es válido.'
+    }
+    if (lower.includes('rate limit')) {
+      return 'Demasiados intentos. Espera un momento antes de volver a intentar.'
+    }
+    if (lower.includes('network') || lower.includes('fetch')) {
+      return NETWORK_MESSAGE
+    }
   }
 
   const isNetworkFailure =
