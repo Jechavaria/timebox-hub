@@ -30,7 +30,7 @@ export function CompleteBlockDialog({ block, onClose, onComplete }: CompleteBloc
   const [startTimeInput, setStartTimeInput] = useState('')
   const [endTimeInput, setEndTimeInput] = useState('')
   const [metricProgress, setMetricProgress] = useState('')
-  const [closeMasterTask, setCloseMasterTask] = useState(false)
+  const [closeMasterTask, setCloseMasterTask] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const uid = useId()
@@ -43,7 +43,7 @@ export function CompleteBlockDialog({ block, onClose, onComplete }: CompleteBloc
     const blockStart = block.start_time ? block.start_time.slice(0, 5) : ''
     setStartTimeInput(blockStart)
     setEndTimeInput('')
-    setCloseMasterTask(false)
+    setCloseMasterTask(true)
     setStatus(parsed.status === 'active' ? 'completed' : parsed.status)
     setMetricProgress(parsed.metricProgress || parsed.targetMetric || '')
     setError(null)
@@ -335,14 +335,17 @@ export function CompleteBlockDialog({ block, onClose, onComplete }: CompleteBloc
         </div>
 
         {block?.master_task_id ? (
-          <label className="flex min-h-11 touch-manipulation items-center gap-3 rounded-xl border border-glass-border bg-glass px-3 cursor-pointer">
+          <label className="flex min-h-11 touch-manipulation items-center gap-3 rounded-xl border border-glass-border bg-glass px-3 py-2 cursor-pointer">
             <input
               type="checkbox"
               checked={closeMasterTask}
               onChange={(event) => setCloseMasterTask(event.target.checked)}
               className="size-4 accent-accent"
             />
-            <span className="text-sm text-ink">Cerrar también la tarea en el backlog</span>
+            <div className="flex flex-col">
+              <span className="text-sm font-medium text-ink">Completar también en el backlog</span>
+              <span className="text-[11px] text-ink-muted">Sincroniza el estado del pendiente en la planificación y en el backlog</span>
+            </div>
           </label>
         ) : null}
 

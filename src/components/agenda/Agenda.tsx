@@ -88,6 +88,16 @@ export function Agenda() {
 
   const handleToggleComplete = async (block: ScheduleBlock) => {
     if (block.is_completed) {
+      if (block.master_task_id) {
+        const taskResult = await tasks.updateTask(block.master_task_id, { is_completed: false })
+        if (!taskResult.ok) {
+          toast.error(taskResult.message, 'No se pudo reabrir la tarea')
+          return
+        }
+        toast.info('Tarea y bloques reabiertos.')
+        return
+      }
+
       const result = await schedule.updateBlock(block.id, {
         is_completed: false,
         actual_duration_minutes: null,
@@ -126,8 +136,8 @@ export function Agenda() {
         return {
           ok: false,
           message: rollback.ok
-            ? `No se cerró la tarea maestra: ${taskResult.message}`
-            : `El bloque quedó completado, pero no se pudo cerrar la tarea maestra ni revertir el bloque. ${taskResult.message}`,
+            ? `No se sincronizó la tarea maestra: ${taskResult.message}`
+            : `El bloque quedó completado, pero no se pudo sincronizar la tarea maestra ni revertir el bloque. ${taskResult.message}`,
         }
       }
     }

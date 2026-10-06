@@ -54,6 +54,10 @@ export interface UseScheduleResult {
     startMinutes: number | null,
   ) => Promise<MutationResult<ScheduleBlock>>
   updateBlock: (blockId: string, changes: ScheduleBlockUpdate) => Promise<MutationResult<ScheduleBlock>>
+  syncBlocksCompletion: (
+    masterTaskId: string,
+    isCompleted: boolean,
+  ) => Promise<MutationResult<ScheduleBlock[]>>
   deleteBlock: (blockId: string) => Promise<MutationResult<string>>
 }
 
@@ -498,6 +502,69 @@ export function useSchedule(): UseScheduleResult {
     [blocks, persistPlacement],
   )
 
+  const syncBlocksCompletion = useCallback<UseScheduleResult['syncBlocksCompletion']>(
+    async (masterTaskId, isCompleted) => {
+      if (!userId) return { ok: false, message: 'Debes iniciar sesión.' }
+
+      const matchingBlocks = blocks.filter((b) => b.master_task_id === masterTaskId)
+      const previousBlocks = [...blocks]
+
+      if (matchingBlocks.length > 0) {
+        matchingBlocks.forEach((b) => pendingIds.current.add(b.id))
+        setBlocks((current) =>
+          current.map((b) => {
+            if (b.master_task_id !== masterTaskId) return b
+            return {
+              ...b,
+              is_completed: isCompleted,
+              actual_duration_minutes: isCompleted
+                ? (b.actual_duration_minutes ?? b.planned_duration_minutes)
+                : null,
+            }
+          }),
+        )
+      }
+
+      try {
+        const updatePayload: { is_completed: boolean; actual_duration_minutes?: null } = {
+          is_completed: isCompleted,
+        }
+        if (!isCompleted) {
+          updatePayload.actual_duration_minutes = null
+        }
+
+        const { data, error: updateError } = await supabase
+          .from('schedule_blocks')
+          .update(updatePayload)
+          .eq('master_task_id', masterTaskId)
+          .eq('user_id', userId)
+          .select('*')
+
+        matchingBlocks.forEach((b) => pendingIds.current.delete(b.id))
+
+        if (updateError) throw updateError
+
+        if (data && data.length > 0) {
+          const visibleBlocks = (data as ScheduleBlock[]).filter(
+            (b) => b.scheduled_date >= today && b.scheduled_date <= windowEnd,
+          )
+          if (visibleBlocks.length > 0) {
+            setBlocks((current) => mergeBlocks(current, visibleBlocks))
+          }
+          return { ok: true, data: data as ScheduleBlock[] }
+        }
+
+        return { ok: true, data: [] }
+      } catch (err) {
+        console.error('Error al sincronizar bloques de la tarea:', err)
+        matchingBlocks.forEach((b) => pendingIds.current.delete(b.id))
+        setBlocks(previousBlocks)
+        return { ok: false, message: MUTATION_ERROR }
+      }
+    },
+    [blocks, today, userId, windowEnd],
+  )
+
   const deleteBlock = useCallback<UseScheduleResult['deleteBlock']>(
     async (blockId) => {
       if (!userId) return { ok: false, message: 'Inicia sesión para borrar un bloque.' }
@@ -534,6 +601,7 @@ export function useSchedule(): UseScheduleResult {
     createRoutineRecurringBlocks,
     moveBlock,
     updateBlock,
+    syncBlocksCompletion,
     deleteBlock,
   }
 }
